@@ -130,22 +130,37 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = e.target.files[0];
             if (!file) return;
 
-            // Validate file size (max 5MB)
-            if (file.size > 5 * 1024 * 1024) {
-                showToast('A foto não pode ter mais de 5MB.', 'warning');
+            if (!file.type || !file.type.startsWith('image/')) {
+                showToast('Selecione apenas arquivos de imagem (JPG ou PNG). Vídeos não são permitidos.', 'warning');
                 return;
             }
 
             const reader = new FileReader();
             reader.onload = function(event) {
-                selectedBase64 = event.target.result;
-                previewImg.src = selectedBase64;
-                previewImg.style.display = 'block';
-                iconSvg.style.display = 'none';
-                labelText.textContent = 'Foto selecionada!';
-                saveBtn.removeAttribute('disabled');
-                saveBtn.style.cursor = 'pointer';
-                saveBtn.style.opacity = '1';
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const SIZE = 160;
+                    canvas.width = SIZE;
+                    canvas.height = SIZE;
+                    const ctx = canvas.getContext('2d');
+                    const minDim = Math.min(img.width, img.height);
+                    const sx = (img.width - minDim) / 2;
+                    const sy = (img.height - minDim) / 2;
+                    ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, SIZE, SIZE);
+                    selectedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                    previewImg.src = selectedBase64;
+                    previewImg.style.display = 'block';
+                    iconSvg.style.display = 'none';
+                    labelText.textContent = 'Foto selecionada!';
+                    saveBtn.removeAttribute('disabled');
+                    saveBtn.style.cursor = 'pointer';
+                    saveBtn.style.opacity = '1';
+                };
+                img.onerror = function() {
+                    showToast('Arquivo de imagem inválido.', 'error');
+                };
+                img.src = event.target.result;
             };
             reader.readAsDataURL(file);
         });
@@ -592,7 +607,6 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const data = await apiRequest('/appointments');
             appointments = data;
-            resolveOverlappingAppointments();
             return appointments;
         } catch (e) {
             console.error("Erro ao carregar agendamentos do backend:", e);
@@ -603,7 +617,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // === Operações pós-save comuns ===
     async function afterAppointmentChange() {
         recalculateClientLevels();
-        await saveClients(clients);
         initStatsAnimation();
         rebuildNotifications();
     }
@@ -3431,7 +3444,7 @@ function closeAppointmentModal() {
         const N = displayProfs.length;
 
         // Set grid columns template dynamically
-        grid.style.gridTemplateColumns = `60px repeat(${N}, minmax(130px, 1fr))`;
+        grid.style.gridTemplateColumns = `60px repeat(${N}, minmax(155px, 1fr))`;
 
         // 1. Render Header Row
         const timeHeader = document.createElement('div');
@@ -3444,17 +3457,23 @@ function closeAppointmentModal() {
             cell.className = 'calendar-header-cell';
             cell.dataset.profId = p.id;
             cell.style.cursor = 'pointer';
-            cell.title = 'Clique para bloquear a agenda deste profissional';
+            cell.title = `${p.name} — Clique para bloquear a agenda deste profissional`;
             
-            const avatarHTML = p.avatar 
-                ? `<img src="${p.avatar}" alt="Foto ${p.name}" class="professional-avatar-img" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-bottom: 4px; border: 1px solid var(--gold-border);">`
+            const hasValidImage = p.avatar && String(p.avatar).startsWith('data:image/');
+            const avatarHTML = hasValidImage 
+                ? `<img src="${p.avatar}" alt="" class="professional-avatar-img" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-bottom: 4px; border: 1px solid var(--gold-border);">`
                 : `<div class="professional-avatar" style="background: ${p.color}; margin-bottom: 4px; width: 32px; height: 32px; font-size: 14px;">${p.initials}</div>`;
+
+            const nameParts = String(p.name || '').trim().split(/\s+/);
+            const shortName = nameParts.length > 2
+                ? `${nameParts[0]} ${['de', 'da', 'do', 'dos', 'das'].includes(nameParts[1].toLowerCase()) && nameParts[2] ? nameParts[2] : nameParts[1]}`
+                : p.name;
                 
             cell.innerHTML = `
                 ${avatarHTML}
-                <div class="calendar-grid__prof-name" style="font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 4px; justify-content: center; width: 100%;">
-                    ${p.name}
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="opacity: 0.5; margin-left: 2px; flex-shrink: 0;">
+                <div class="calendar-grid__prof-name" style="font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 3px; justify-content: center; width: 100%; overflow: hidden;">
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: calc(100% - 14px); display: block;">${shortName}</span>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="opacity: 0.5; margin-left: 1px; flex-shrink: 0;">
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                     </svg>
@@ -3803,19 +3822,19 @@ function closeAppointmentModal() {
                         </div>
                     `;
                 } else if (finalDuration <= 30) {
-                    apptBlock.style.padding = '3px 8px';
+                    apptBlock.style.padding = '2px 6px';
                     apptBlock.innerHTML = `
-                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 1px; height: 100%; width: 100%;">
-                            <span class="appointment-time" style="font-weight: 700; font-size: 14px; display: block; color: inherit; line-height: 1.1;">${appt.timeStart}–${appt.timeEnd}</span>
-                            <span class="appointment-service" style="font-weight: 600; font-size: 13px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; line-height: 1.1;">${mutualBadge}${appt.serviceName} ${statusIndicator} <span class="appointment-client" style="font-style: italic; font-weight: 400; opacity: 0.85; color: inherit !important; font-size: 13px;">(${appt.client})</span></span>
+                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 1px; height: 100%; width: 100%; overflow: hidden;">
+                            <span class="appointment-time" style="font-weight: 700; font-size: 12px; display: block; color: inherit; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0;">${appt.timeStart}–${appt.timeEnd}</span>
+                            <span class="appointment-service" style="font-weight: 600; font-size: 12px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; line-height: 1.15; flex-shrink: 0;">${mutualBadge}${appt.serviceName} ${statusIndicator} <span class="appointment-client" style="font-style: italic; font-weight: 400; opacity: 0.85; color: inherit !important; font-size: 11.5px;">(${appt.client})</span></span>
                         </div>
                     `;
                 } else {
-                    apptBlock.style.padding = '4px 8px';
+                    apptBlock.style.padding = '4px 7px';
                     apptBlock.innerHTML = `
-                        <span class="appointment-time" style="font-weight: 700; font-size: 16px; display: block; color: inherit;">${appt.timeStart}–${appt.timeEnd}</span>
-                        <span class="appointment-service" style="font-weight: 600; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; font-size: 15px;">${mutualBadge}${appt.serviceName} ${statusIndicator}</span>
-                        <span class="appointment-client" style="font-style: italic; font-size: 15px; opacity: 0.85; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit !important;">(${appt.client})</span>
+                        <span class="appointment-time" style="font-weight: 700; font-size: 12.5px; line-height: 1.2; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; flex-shrink: 0;">${appt.timeStart}–${appt.timeEnd}</span>
+                        <span class="appointment-service" style="font-weight: 600; font-size: 12.5px; line-height: 1.2; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; flex-shrink: 0;">${mutualBadge}${appt.serviceName} ${statusIndicator}</span>
+                        <span class="appointment-client" style="font-style: italic; font-size: 12px; line-height: 1.2; opacity: 0.88; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit !important; flex-shrink: 0;">(${appt.client})</span>
                     `;
                 }
 
@@ -7819,16 +7838,17 @@ function closeAppointmentModal() {
     };
 
     /** Render professionals list dynamically on the right sidebar */
-    async function renderRightSidebarProfessionals() {
+    async function renderRightSidebarProfessionals(forceRefresh = false) {
         const list = document.querySelector('.right-sidebar .professionals-list');
         if (!list) return;
 
-        // Busca dados frescos do banco
-        try {
-            professionals = await loadProfessionals();
-            await syncRegisteredEmployees();
-        } catch(e) {
-            console.warn('Aviso ao carregar lista de profissionais:', e.message);
+        // Busca dados frescos do banco apenas se solicitado ou se a lista estiver vazia
+        if (forceRefresh || !professionals || professionals.length === 0) {
+            try {
+                professionals = await loadProfessionals();
+            } catch(e) {
+                console.warn('Aviso ao carregar lista de profissionais:', e.message);
+            }
         }
 
         const countSpan = document.querySelector('.right-sidebar .right-panel-count');
@@ -7842,8 +7862,9 @@ function closeAppointmentModal() {
         }
 
         list.innerHTML = professionals.map(p => {
-            const avatarHTML = p.avatar
-                ? `<img src="${p.avatar}" alt="${p.name}" class="professional-avatar-img">`
+            const hasValidImage = p.avatar && String(p.avatar).startsWith('data:image/');
+            const avatarHTML = hasValidImage
+                ? `<img src="${p.avatar}" alt="" class="professional-avatar-img">`
                 : `<div class="professional-avatar" style="background: ${p.color}; color: #fff; width: 36px; height: 36px; font-size: 15px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold;">${p.initials}</div>`;
             
             return `
@@ -7885,10 +7906,25 @@ function closeAppointmentModal() {
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
+                if (!file.type || !file.type.startsWith('image/')) {
+                    showToast('Selecione apenas arquivos de imagem (JPG ou PNG).', 'warning');
+                    return;
+                }
                 
                 const reader = new FileReader();
                 reader.onload = (ev) => {
-                    const base64Data = ev.target.result;
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const SIZE = 160;
+                        canvas.width = SIZE;
+                        canvas.height = SIZE;
+                        const ctx = canvas.getContext('2d');
+                        const minDim = Math.min(img.width, img.height);
+                        const sx = (img.width - minDim) / 2;
+                        const sy = (img.height - minDim) / 2;
+                        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, SIZE, SIZE);
+                        const base64Data = canvas.toDataURL('image/jpeg', 0.8);
                     
                     // 1. Update session in sessionStorage
                     session.foto = base64Data;
@@ -7922,6 +7958,8 @@ function closeAppointmentModal() {
                         console.error("Erro ao salvar foto de perfil no Firestore:", err);
                         showToast('Erro ao atualizar foto de perfil.', 'error');
                     });
+                    };
+                    img.src = ev.target.result;
                 };
                 reader.readAsDataURL(file);
             });
@@ -8971,14 +9009,11 @@ function closeAppointmentModal() {
                 showForceAvatarModal();
             }
 
-            // Sync registered employees
-            await syncRegisteredEmployees();
-
             // Setup view based on role (which needs loaded professionals to lock employee view)
             await setupRoleBasedView();
 
-            // Render dynamic professionals list on right sidebar
-            await renderRightSidebarProfessionals();
+            // Render dynamic professionals list on right sidebar (using already-loaded professionals)
+            await renderRightSidebarProfessionals(false);
 
             // Populate filters first so we can read the default selected professional
             populateMainFilters();
@@ -9174,11 +9209,18 @@ function closeAppointmentModal() {
     // Run initialization
     init();
 
-    // Redesenhar agenda ao redimensionar a janela para evitar quebras ou grids vazios
+    // Redesenhar agenda apenas quando a largura da janela mudar (evita travamentos ao rolar no celular)
+    let _lastWindowWidth = window.innerWidth;
+    let _resizeTimer = null;
     window.addEventListener('resize', () => {
-        const filterProf = document.getElementById('filterProfissional');
-        renderCalendarGrid(filterProf ? filterProf.value : null);
-        renderAppointments();
+        if (window.innerWidth === _lastWindowWidth) return;
+        _lastWindowWidth = window.innerWidth;
+        clearTimeout(_resizeTimer);
+        _resizeTimer = setTimeout(() => {
+            const filterProf = document.getElementById('filterProfissional');
+            renderCalendarGrid(filterProf ? filterProf.value : null);
+            renderAppointments();
+        }, 200);
     });
 
     // ============================================

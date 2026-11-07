@@ -1596,6 +1596,13 @@ if (require.main === module || !process.env.VERCEL) {
 
         // Iniciar rotina de backup e espelhamento diário
         autoBackup.startDailyBackupRoutine(db);
+
+        // Keep-alive no Render Free Tier para evitar cold-start de 15s durante o expediente
+        if (process.env.RENDER_EXTERNAL_URL) {
+            setInterval(() => {
+                fetch(`${process.env.RENDER_EXTERNAL_URL}/api/health`).catch(() => {});
+            }, 10 * 60 * 1000);
+        }
     });
 }
 

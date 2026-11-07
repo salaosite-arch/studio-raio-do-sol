@@ -2347,17 +2347,16 @@ body.dark-mode .topbar-badge {
 .appointment-block {
   border-radius: var(--radius-sm);
   padding: 4px 8px;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   overflow: hidden;
-  line-height: 1.35;
+  line-height: 1.2;
   position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  animation: pulse-appointment 3s infinite ease-in-out;
 }
 .appointment-block:hover {
   animation-play-state: paused;
