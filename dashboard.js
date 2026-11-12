@@ -3698,9 +3698,21 @@ function closeAppointmentModal() {
         }
 
         const N = displayProfs.length;
+        window._excelColWidths = window._excelColWidths || JSON.parse(localStorage.getItem('raiosol_excel_col_widths') || '{}');
 
-        // Set grid columns template dynamically
-        grid.style.gridTemplateColumns = `60px repeat(${N}, minmax(155px, 1fr))`;
+        const updateGridTemplateCols = () => {
+            const cols = displayProfs.map(pr => {
+                const customW = window._excelColWidths[String(pr.id)];
+                if (customW && customW >= 120) {
+                    return `${Math.round(customW)}px`;
+                }
+                const baseW = Number(pr.autoMinWidth) || 155;
+                return `minmax(${baseW}px, 1fr)`;
+            });
+            grid.style.gridTemplateColumns = `60px ${cols.join(' ')}`;
+        };
+        window._updateGridTemplateCols = updateGridTemplateCols;
+        updateGridTemplateCols();
 
         // 1. Render Header Row
         const timeHeader = document.createElement('div');
@@ -3764,8 +3776,46 @@ function closeAppointmentModal() {
                 </div>
             `;
 
+            // Barra divisória estilo Excel (arrastar para alargar/estreitar ou duplo clique para auto-ajustar)
+            const resizer = document.createElement('div');
+            resizer.className = 'excel-col-resizer';
+            resizer.title = 'Arraste para alargar a coluna (igual no Excel) ou dê duplo clique para auto-ajustar';
+            resizer.addEventListener('click', (ev) => ev.stopPropagation());
+            resizer.addEventListener('mousedown', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                const startX = ev.clientX;
+                const startW = cell.getBoundingClientRect().width;
+                resizer.classList.add('resizing');
+                document.body.classList.add('excel-col-dragging');
+
+                const onMouseMove = (moveEv) => {
+                    const newW = Math.max(135, Math.min(540, startW + (moveEv.clientX - startX)));
+                    window._excelColWidths[String(p.id)] = Math.round(newW);
+                    if (window._updateGridTemplateCols) window._updateGridTemplateCols();
+                };
+                const onMouseUp = () => {
+                    resizer.classList.remove('resizing');
+                    document.body.classList.remove('excel-col-dragging');
+                    localStorage.setItem('raiosol_excel_col_widths', JSON.stringify(window._excelColWidths));
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+            resizer.addEventListener('dblclick', (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                delete window._excelColWidths[String(p.id)];
+                localStorage.setItem('raiosol_excel_col_widths', JSON.stringify(window._excelColWidths));
+                if (window._updateGridTemplateCols) window._updateGridTemplateCols();
+            });
+            cell.appendChild(resizer);
+
             // Click handler to open blocking modal
             cell.addEventListener('click', (e) => {
+                if (e.target.closest('.excel-col-resizer')) return;
                 e.stopPropagation();
                 // Admin can block any, employee can only block their own
                 const currentSession = JSON.parse(sessionStorage.getItem('raiosol_session') || '{}');
@@ -3989,6 +4039,11 @@ function closeAppointmentModal() {
                 });
             });
 
+            // Auto-ajuste estilo Excel: se o profissional tem agendamentos simultâneos (lado a lado), amplia a coluna automaticamente!
+            const maxSimultaneous = profAppts.reduce((max, a) => Math.max(max, a.totalCols || 1), 1);
+            p.autoMinWidth = maxSimultaneous > 1 ? Math.min(440, maxSimultaneous * 145) : 155;
+            if (window._updateGridTemplateCols) window._updateGridTemplateCols();
+
             // Render appointments for this professional's column
             profAppts.forEach(appt => {
                 const roundedTime = roundDownTo30Min(appt.timeStart);
@@ -4136,24 +4191,33 @@ function closeAppointmentModal() {
                         </div>
                     `;
                 } else {
-                    // Card completo em 4 linhas sem cortar nome da cliente nem os botões!
-                    apptBlock.style.padding = '6px 8px';
+                    // Card completo em 4 linhas sem cortar nome da cliente nem os botões (mesmo quando dividido em 2 subcolunas como Nazaré)!
+                    const isSplitCol = totalCols > 1;
+                    apptBlock.style.padding = isSplitCol ? '5px 6px' : '6px 8px';
+                    const splitBadgeHTML = isSplitCol
+                        ? (appt.status === 'Concluído'
+                            ? '<span class="appt-v3-badge" style="color:#065F46;padding:1px 3px;">✓</span>'
+                            : (isInChairNow
+                                ? '<span class="appt-v3-badge" style="color:#0369A1;padding:1px 3px;">💺</span>'
+                                : '<span class="appt-v3-badge" style="color:#92400E;padding:1px 3px;">⏳</span>'))
+                        : v2BadgeHTML;
+                    const doneLabel = isSplitCol ? '✓ Ok' : '✓ Concluir';
                     apptBlock.innerHTML = `
                         <div class="appt-v3-card-inner">
                             <div>
                                 <div class="appt-v3-top" style="margin-bottom:2px;">
-                                    <span class="appt-v3-time">${appt.timeStart}–${appt.timeEnd}</span>
-                                    ${v2BadgeHTML}
+                                    <span class="appt-v3-time" style="${isSplitCol ? 'font-size:10.5px;' : ''}">${appt.timeStart}–${appt.timeEnd}</span>
+                                    ${splitBadgeHTML}
                                 </div>
-                                <div class="appt-v3-service appointment-service" style="font-size:12px;margin-bottom:2px;">${mutualBadge}${appt.serviceName}</div>
+                                <div class="appt-v3-service appointment-service" style="font-size:${isSplitCol ? '11.5px' : '12px'};margin-bottom:2px;">${mutualBadge}${appt.serviceName}</div>
                                 <div class="appt-v3-meta" style="margin-bottom:3px;">
                                     <span class="appointment-client" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">👤 ${appt.client}</span>
-                                    <strong style="font-size:11px;flex-shrink:0;">${shortPrice}</strong>
+                                    <strong style="font-size:10.5px;flex-shrink:0;">${shortPrice}</strong>
                                 </div>
                             </div>
                             <div class="appt-v3-actions">
                                 <button type="button" class="appt-v3-btn appt-v3-btn--wa" data-qa="wa" title="Enviar confirmação no WhatsApp">💬 Zap</button>
-                                ${appt.status !== 'Concluído' ? '<button type="button" class="appt-v3-btn appt-v3-btn--done" data-qa="done" title="Concluir atendimento em 1 clique">✓ Concluir</button>' : ''}
+                                ${appt.status !== 'Concluído' ? `<button type="button" class="appt-v3-btn appt-v3-btn--done" data-qa="done" title="Concluir atendimento em 1 clique">${doneLabel}</button>` : ''}
                             </div>
                         </div>
                     `;
