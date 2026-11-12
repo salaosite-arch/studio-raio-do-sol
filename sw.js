@@ -1,4 +1,4 @@
-const CACHE_NAME = 'raiodosol-cache-v13';
+const CACHE_NAME = 'raiodosol-cache-v14';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -13,42 +13,52 @@ const ASSETS_TO_CACHE = [
   '/assets/admin-avatar.png'
 ];
 
-// Install Event - cache the static shell
+// Install Event - activate new Service Worker immediately
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      console.log('[Service Worker] Caching app shell');
       return cache.addAll(ASSETS_TO_CACHE).catch(err => {
-        console.warn('[Service Worker] Error caching files on install:', err);
+        console.warn('[Service Worker] Non-blocking cache init warning:', err);
       });
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
-// Activate Event - clean old caches
+// Activate Event - purge all old caches and force open Home Screen PWAs to reload into the latest version
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
-        keys.map(key => {
-          if (key !== CACHE_NAME) {
-            console.log('[Service Worker] Removing old cache:', key);
-            return caches.delete(key);
+    (async () => {
+      const keys = await caches.keys();
+      const oldKeys = keys.filter(key => key !== CACHE_NAME);
+      await Promise.all(oldKeys.map(key => caches.delete(key)));
+      await self.clients.claim();
+
+      if (oldKeys.length > 0) {
+        const windowClients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        for (const client of windowClients) {
+          try {
+            client.postMessage({ type: 'SW_UPDATED_RELOAD', version: CACHE_NAME });
+            if ('navigate' in client && client.url) {
+              await client.navigate(client.url);
+            }
+          } catch (e) {
+            console.warn('[Service Worker] Client navigate fallback:', e);
           }
-        })
-      );
-    }).then(() => self.clients.claim())
+        }
+      }
+    })()
   );
 });
 
-// Fetch Event - network-first for API requests, stale-while-revalidate for static files
+// Fetch Event - Bypass cache for API & always fetch fresh HTML/JS/CSS from network first
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // If it's an API call or not a GET request, bypass caching
+  // Never cache API calls or non-GET requests
   if (url.pathname.startsWith('/api') || event.request.method !== 'GET') {
     event.respondWith(
-      fetch(event.request).catch(err => {
+      fetch(event.request, { cache: 'no-store' }).catch(err => {
         console.error('[Service Worker] API Fetch failed (offline):', err);
         return new Response(JSON.stringify({ error: 'Você está offline' }), {
           headers: { 'Content-Type': 'application/json' }
@@ -58,9 +68,12 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Network-First strategy for all static files so mobile phones ALWAYS receive the latest code immediately
+  // Network-First with cache: 'no-store' for code files so Home Screen PWAs never run stale code
+  const isCodeOrDoc = /\.(html|js|css|json)$/i.test(url.pathname) || url.pathname === '/';
+  const fetchOptions = isCodeOrDoc ? { cache: 'no-store' } : {};
+
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, fetchOptions)
       .then(networkResponse => {
         if (networkResponse && networkResponse.status === 200) {
           const cloned = networkResponse.clone();
@@ -76,9 +89,14 @@ self.addEventListener('fetch', event => {
   );
 });
 
-// Message Event - Trigger native mobile status bar notification directly from Service Worker
+// Message Event - Trigger native mobile status bar notification or handle skipWaiting
 self.addEventListener('message', event => {
-  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+  if (!event.data) return;
+  if (event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+  if (event.data.type === 'SHOW_NOTIFICATION') {
     const title = event.data.title || '🔔 Studio Raio do Sol';
     const options = event.data.options || {};
     event.waitUntil(

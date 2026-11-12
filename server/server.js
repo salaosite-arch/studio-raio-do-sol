@@ -92,6 +92,10 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'healthy', timestamp: new Date().toISOString() });
 });
 
+app.get('/api/version', (req, res) => {
+    res.json({ version: 'v58', swVersion: 'raiodosol-cache-v14', timestamp: Date.now() });
+});
+
 // Rota de Inscrição em Eventos de Tempo Real (Sem autenticação direta no SSE pois o payload não contém dados sensíveis)
 app.get('/api/live-updates', (req, res) => {
     res.setHeader('Content-Type', 'text/event-stream');
@@ -729,9 +733,40 @@ app.delete('/api/materials/:id', authenticateToken, async (req, res) => {
 // ROTAS DE AGENDAMENTOS (APPOINTMENTS) E NOTIFICAÇÕES
 // ==========================================
 
+let _notifTableEnsured = false;
+async function ensureNotificationsTable() {
+    if (_notifTableEnsured) return;
+    try {
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS notifications_log (
+                id            VARCHAR(80) PRIMARY KEY,
+                appt_id       VARCHAR(80),
+                action_type   VARCHAR(30) NOT NULL,
+                actor_id      VARCHAR(80),
+                actor_name    VARCHAR(120) NOT NULL,
+                actor_role    VARCHAR(30) NOT NULL,
+                prof_id       VARCHAR(80),
+                prof_name     VARCHAR(120),
+                prof2_id      VARCHAR(80),
+                prof2_name    VARCHAR(120),
+                client_name   VARCHAR(150),
+                service_name  VARCHAR(150),
+                appt_date     VARCHAR(20),
+                time_start    VARCHAR(20),
+                time_end      VARCHAR(20),
+                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        _notifTableEnsured = true;
+    } catch (e) {
+        console.error('[NotificationsLog] Erro ao garantir tabela notifications_log:', e.message);
+    }
+}
+
 async function logAppointmentNotification({ apptId, actionType, reqUser, apptData }) {
     if (!actionType || !apptData) return;
     try {
+        await ensureNotificationsTable();
         const notifId = 'ntf_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
         const actorName = (reqUser && reqUser.name) || apptData.createdBy || apptData.created_by || 'Sistema';
         const actorRole = (reqUser && reqUser.role) || 'funcionario';
@@ -766,6 +801,7 @@ async function logAppointmentNotification({ apptId, actionType, reqUser, apptDat
 
 app.get('/api/notifications', authenticateToken, async (req, res) => {
     try {
+        await ensureNotificationsTable();
         const logsRes = await db.query('SELECT * FROM notifications_log ORDER BY created_at DESC LIMIT 80');
         const mapped = logsRes.rows.map(r => ({
             id: r.id,

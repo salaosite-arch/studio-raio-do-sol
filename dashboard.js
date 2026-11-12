@@ -855,21 +855,34 @@ document.addEventListener('DOMContentLoaded', () => {
     // SECTION 3: LOCAL STORAGE HELPERS
     // ============================================
 
+    let lastAppointmentsSignature = null;
+    function getAppointmentsSignature(list) {
+        if (!Array.isArray(list)) return '';
+        return list
+            .map(a => `${a.id}:${a.date}:${a.timeStart}:${a.timeEnd}:${a.status}:${a.professionalId}:${a.professionalId2 || ''}:${a.client}:${a.serviceId}:${a.servicePrice}`)
+            .sort()
+            .join('|');
+    }
+
     async function loadAppointments() {
         try {
             const data = await apiRequest('/appointments');
-            appointments = data;
+            if (Array.isArray(data)) {
+                appointments = data;
+            }
             return appointments;
         } catch (e) {
             console.error("Erro ao carregar agendamentos do backend:", e);
-            return [];
+            return appointments;
         }
     }
 
     // === Operações pós-save comuns ===
     async function afterAppointmentChange() {
+        lastAppointmentsSignature = getAppointmentsSignature(appointments);
         recalculateClientLevels();
         initStatsAnimation();
+        syncCustomAgendaFilters();
         rebuildNotifications();
     }
 
@@ -10113,6 +10126,7 @@ function closeAppointmentModal() {
             services = svcs;
             clients = clis;
             appointments = appts;
+            lastAppointmentsSignature = getAppointmentsSignature(appointments);
 
             updatePreloader(75, 'Configurando painel e dados...');
 
@@ -11140,70 +11154,99 @@ function closeAppointmentModal() {
         }
     }
 
-    async function refreshActivePageData() {
+    let _isRefreshingRealTime = false;
+
+    async function refreshActivePageData(forceRender = false) {
+        if (_isRefreshingRealTime) return;
+        _isRefreshingRealTime = true;
         try {
-            appointments = await loadAppointments();
+            const freshAppts = await loadAppointments();
+            const newSig = getAppointmentsSignature(freshAppts);
+            const hasChanged = forceRender || (lastAppointmentsSignature !== null && newSig !== lastAppointmentsSignature);
+            lastAppointmentsSignature = newSig;
 
-            // 1. Agenda Page: re-render grid and calendar appointments
-            const pageAgenda = document.getElementById('page-agenda');
-            if (pageAgenda && !pageAgenda.classList.contains('hidden')) {
-                const filterProf = document.getElementById('filterProfissional');
-                const currentProfId = filterProf ? filterProf.value : null;
-                renderCalendarGrid(currentProfId);
-                renderAppointments();
-                initStatsAnimation();
+            if (hasChanged && !document.body.classList.contains('excel-col-dragging')) {
+                // 1. Agenda Page: re-render grid and calendar appointments preserving scroll position
+                const pageAgenda = document.getElementById('page-agenda');
+                if (pageAgenda && !pageAgenda.classList.contains('hidden')) {
+                    const gridEl = document.getElementById('calendarGrid');
+                    const scrollParent = gridEl ? (gridEl.closest('.calendar-wrapper, .agenda-calendar-wrapper') || gridEl.parentElement) : null;
+                    const savedScrollLeft = scrollParent ? scrollParent.scrollLeft : 0;
+                    const savedScrollTop = scrollParent ? scrollParent.scrollTop : 0;
+                    const savedGridLeft = gridEl ? gridEl.scrollLeft : 0;
+                    const savedGridTop = gridEl ? gridEl.scrollTop : 0;
+
+                    const filterProf = document.getElementById('filterProfissional');
+                    const currentProfId = filterProf ? filterProf.value : null;
+                    renderCalendarGrid(currentProfId);
+                    renderAppointments();
+                    initStatsAnimation();
+                    syncCustomAgendaFilters();
+
+                    if (scrollParent) {
+                        scrollParent.scrollLeft = savedScrollLeft;
+                        scrollParent.scrollTop = savedScrollTop;
+                    }
+                    if (gridEl) {
+                        gridEl.scrollLeft = savedGridLeft;
+                        gridEl.scrollTop = savedGridTop;
+                    }
+                }
+
+                // 2. Relatorios Page: re-render reports
+                const pageRelatorios = document.getElementById('page-relatorios');
+                if (pageRelatorios && !pageRelatorios.classList.contains('hidden')) {
+                    renderReportsPage();
+                }
+
+                // 3. Pagamentos Page: re-render payouts
+                const pagePagamentos = document.getElementById('page-pagamentos');
+                if (pagePagamentos && !pagePagamentos.classList.contains('hidden')) {
+                    renderPaymentsPage();
+                }
             }
 
-            // 2. Relatorios Page: re-render reports
-            const pageRelatorios = document.getElementById('page-relatorios');
-            if (pageRelatorios && !pageRelatorios.classList.contains('hidden')) {
-                renderReportsPage();
-            }
-
-            // 3. Pagamentos Page: re-render payouts
-            const pagePagamentos = document.getElementById('page-pagamentos');
-            if (pagePagamentos && !pagePagamentos.classList.contains('hidden')) {
-                renderPaymentsPage();
-            }
-
-            // 4. Rebuild notifications bell/list
-            rebuildNotifications();
+            // 4. Always rebuild notifications bell/list & fire push notifications for new events
+            await rebuildNotifications();
         } catch (e) {
-            console.error("[SSE] Erro ao atualizar os dados em tempo real:", e);
+            console.error("[RealTime] Erro ao atualizar os dados em tempo real:", e);
+        } finally {
+            _isRefreshingRealTime = false;
         }
     }
 
     function initRealTimeUpdates() {
-        const sseUrl = `${API_BASE_URL}/live-updates`;
-        console.log(`[SSE] Conectando ao serviço de atualizações em tempo real em: ${sseUrl}`);
-        const eventSource = new EventSource(sseUrl);
+        try {
+            const sseUrl = `${API_BASE_URL}/live-updates`;
+            const eventSource = new EventSource(sseUrl);
 
-        eventSource.onmessage = (event) => {
-            if (event.data === 'refresh') {
-                console.log('[SSE] Sinal de atualização recebido do servidor. Recarregando dados...');
-                refreshActivePageData();
-            }
-        };
+            eventSource.onmessage = (event) => {
+                if (event.data === 'refresh') {
+                    refreshActivePageData(true);
+                }
+            };
 
-        eventSource.onerror = (error) => {
-            console.warn('[SSE] Erro ou desconexão no canal de tempo real. Reconectando automaticamente...', error);
-        };
+            eventSource.onerror = () => {
+                // Em ambientes Serverless (Vercel), o polling rápido abaixo assume sem ruído
+                eventSource.close();
+            };
+        } catch (e) {}
 
-        // Fallback de polling rápido (7s) + wakeup ao desbloquear a tela do celular
+        // Sincronização em tempo real a cada 3 segundos (atualiza marcações, desmarcações e notificações instantaneamente)
         setInterval(() => {
             if (!document.hidden) {
-                rebuildNotifications();
+                refreshActivePageData(false);
             }
-        }, 7000);
+        }, 3000);
 
         document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
-                refreshActivePageData();
+                refreshActivePageData(true);
             }
         });
 
         window.addEventListener('focus', () => {
-            rebuildNotifications();
+            refreshActivePageData(false);
         });
     }
 

@@ -16,16 +16,72 @@
     <link rel="apple-touch-icon" href="assets/logo.png">
     
     <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js?v=13')
-                    .then(reg => {
-                        console.log('Service Worker registrado:', reg.scope);
-                        if (reg.update) reg.update();
+        (function() {
+            const APP_VERSION = 'v58';
+            let reloading = false;
+            const triggerSafeReload = () => {
+                if (reloading) return;
+                reloading = true;
+                window.location.reload();
+            };
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.addEventListener('controllerchange', triggerSafeReload);
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'SW_UPDATED_RELOAD') {
+                        triggerSafeReload();
+                    }
+                });
+
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('sw.js?v=14', { updateViaCache: 'none' })
+                        .then(reg => {
+                            if (reg.update) reg.update();
+                            if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+                            reg.addEventListener('updatefound', () => {
+                                const newWorker = reg.installing;
+                                if (newWorker) {
+                                    newWorker.addEventListener('statechange', () => {
+                                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                            newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        }
+                                    });
+                                }
+                            });
+                            setInterval(() => { if (!document.hidden && reg.update) reg.update(); }, 25000);
+                            document.addEventListener('visibilitychange', () => {
+                                if (!document.hidden && reg.update) reg.update();
+                            });
+                        })
+                        .catch(err => console.error('Erro ao registrar Service Worker:', err));
+                });
+            }
+
+            const checkServerVersion = () => {
+                fetch('/api/version', { cache: 'no-store' })
+                    .then(r => r.ok ? r.json() : null)
+                    .then(async (data) => {
+                        if (!data || !data.version) return;
+                        const savedVer = localStorage.getItem('raiosol_app_version');
+                        if (savedVer && savedVer !== data.version) {
+                            localStorage.setItem('raiosol_app_version', data.version);
+                            if ('caches' in window) {
+                                const keys = await caches.keys();
+                                await Promise.all(keys.map(k => caches.delete(k)));
+                            }
+                            triggerSafeReload();
+                        } else if (!savedVer) {
+                            localStorage.setItem('raiosol_app_version', data.version);
+                        }
                     })
-                    .catch(err => console.error('Erro ao registrar Service Worker:', err));
+                    .catch(() => {});
+            };
+            checkServerVersion();
+            setInterval(() => { if (!document.hidden) checkServerVersion(); }, 30000);
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) checkServerVersion();
             });
-        }
+        })();
     </script>
     
     <!-- Theme Restore script to prevent layout flashes -->
@@ -41,7 +97,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Dashboard Styles -->
-    <link rel="stylesheet" href="dashboard.css?v=57">
+    <link rel="stylesheet" href="dashboard.css?v=58">
     
     <!-- Local file protocol blocker & guide overlay -->
     <script>
@@ -1574,7 +1630,7 @@
 
     </div><!-- /.dashboard-layout -->
 
-    <script type="module" src="api-config.js?v=10"></script>
-    <script type="module" src="dashboard.js?v=57"></script>
+    <script type="module" src="api-config.js?v=11"></script>
+    <script type="module" src="dashboard.js?v=58"></script>
 </body>
 </html>
