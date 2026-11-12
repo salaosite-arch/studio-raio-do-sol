@@ -1595,9 +1595,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const picker = document.getElementById('datePicker');
         const titleEl = document.getElementById('agendaTitle');
 
-        if (weekdayEl) weekdayEl.textContent = getWeekdayFull(currentDate);
+        const todayISO = toISODateString(new Date());
+        const currISO = toISODateString(currentDate);
+        const isToday = todayISO === currISO;
+
+        if (weekdayEl) {
+            const wd = getWeekdayFull(currentDate);
+            weekdayEl.textContent = `📅 ${wd}${isToday ? ' • HOJE' : ''}`;
+        }
         if (dateEl) dateEl.textContent = formatDateBR(currentDate);
-        if (picker) picker.value = toISODateString(currentDate);
+        if (picker) picker.value = currISO;
 
         const week = getWeekRangeFromDate(currentDate);
         if (titleEl) {
@@ -5082,29 +5089,154 @@ function closeAppointmentModal() {
         return `${differenceInDays}d atrás`;
     }
 
-    /** Rebuild notifications dynamically from active appointments created by employees */
+    /** Helper to get per-user localStorage key for read notifications */
+    function getReadNotificationsKey() {
+        const currentSession = JSON.parse(sessionStorage.getItem('raiosol_session') || '{}');
+        const userSuffix = currentSession && (currentSession.id || currentSession.name)
+            ? String(currentSession.id || currentSession.name).trim().toLowerCase().replace(/\s+/g, '_')
+            : 'global';
+        return `raiosol_read_notifications_${userSuffix}`;
+    }
+
+    /** Request browser/PWA Notification permission on mobile & desktop */
+    async function requestMobileNotificationPermission(showFeedback = false) {
+        if (!('Notification' in window)) {
+            if (showFeedback) showToast('Este navegador não suporta notificações nativas.', 'warning');
+            return false;
+        }
+        if (Notification.permission === 'granted') {
+            if (showFeedback) {
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                showToast('Alertas e vibração no celular já estão ativos! 🔔', 'success');
+            }
+            return true;
+        }
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                if (navigator.vibrate) navigator.vibrate([250, 120, 250]);
+                if (showFeedback) {
+                    showToast('Notificações na barra do celular ativadas com sucesso! 📲🔔', 'success');
+                }
+                if (notifDropdown) renderNotifications(notifDropdown);
+                return true;
+            } else if (showFeedback) {
+                showToast('Permissão de notificação negada nas configurações do navegador.', 'warning');
+            }
+        } catch (err) {
+            console.warn('[Notifications] Erro ao solicitar permissão:', err);
+        }
+        return false;
+    }
+
+    // Automatically request notification permission on first user touch/click if still 'default'
+    const autoAskNotifOnce = () => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            requestMobileNotificationPermission(false);
+        }
+        document.removeEventListener('click', autoAskNotifOnce);
+        document.removeEventListener('touchstart', autoAskNotifOnce);
+    };
+    document.addEventListener('click', autoAskNotifOnce, { once: true });
+    document.addEventListener('touchstart', autoAskNotifOnce, { once: true });
+
+    /** Trigger native mobile notification bar + vibration + sound */
+    function triggerPhoneNotification(title, body, appt) {
+        // 1. Vibrate phone (Android Chrome / PWA)
+        try {
+            if ('vibrate' in navigator) {
+                navigator.vibrate([250, 120, 250, 120, 400]);
+            }
+        } catch (e) {
+            console.warn('[Vibrate] Não suportado:', e);
+        }
+
+        // 2. Show native OS notification in phone's notification shade
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+        const notifOptions = {
+            body: body,
+            icon: '/assets/logo.png',
+            badge: '/assets/logo.png',
+            vibrate: [250, 120, 250, 120, 400],
+            tag: `raiosol-appt-${appt ? appt.id : Date.now()}`,
+            renotify: true,
+            requireInteraction: false,
+            data: {
+                url: '/dashboard.html',
+                apptId: appt ? appt.id : null
+            }
+        };
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.ready
+                .then(reg => {
+                    if (reg && typeof reg.showNotification === 'function') {
+                        return reg.showNotification(title, notifOptions);
+                    }
+                    new Notification(title, notifOptions);
+                })
+                .catch(() => {
+                    try { new Notification(title, notifOptions); } catch (e) {}
+                });
+        } else {
+            try { new Notification(title, notifOptions); } catch (e) {}
+        }
+    }
+
+    /** Rebuild notifications dynamically with targeted routing:
+     *  - Deise (Proprietária / admin): receives notifications whenever ANY employee schedules an appointment.
+     *  - Employee (funcionario): receives notifications whenever Deise (or another user) schedules an appointment FOR THAT SPECIFIC EMPLOYEE.
+     */
     function rebuildNotifications() {
         const currentSession = JSON.parse(sessionStorage.getItem('raiosol_session') || '{}');
         if (!currentSession || !currentSession.name) return;
 
+        const sessionNameClean = currentSession.name.trim().toLowerCase();
+        const isAdminDeise = currentSession.role === 'admin' || sessionNameClean.includes('deise');
+
+        // Find current employee's professional object (when logged in as employee)
+        const myProf = !isAdminDeise
+            ? professionals.find(p =>
+                String(p.id) === String(currentSession.id) ||
+                (p.name && p.name.trim().toLowerCase() === sessionNameClean)
+              )
+            : null;
+
         let filteredAppts = [];
-        if (currentSession.role === 'admin') {
-            // Only show notifications for bookings created by employees (not by the admin themselves)
-            filteredAppts = appointments.filter(a => 
-                a.createdBy && 
-                a.createdBy.trim() !== '' && 
-                a.createdBy !== currentSession.name &&
-                a.status !== 'Cancelado'
-            );
+        if (isAdminDeise) {
+            // Deise (Proprietária / Admin): always notified when any employee books an appointment
+            filteredAppts = appointments.filter(a => {
+                if (!a || a.status === 'Cancelado' || a.status === 'Bloqueado') return false;
+                if (!a.createdBy || a.createdBy.trim() === '') return false;
+                const creatorClean = a.createdBy.trim().toLowerCase();
+                return creatorClean !== sessionNameClean && !creatorClean.includes('deise');
+            });
         } else {
-            // Employees do not get alerts for other people's scheduling
-            filteredAppts = [];
+            // Funcionário (ex: Adriana, Nazaré, Francine): notified ONLY when Deise (or someone else) books for THIS employee
+            filteredAppts = appointments.filter(a => {
+                if (!a || a.status === 'Cancelado' || a.status === 'Bloqueado') return false;
+                const creatorClean = (a.createdBy || '').trim().toLowerCase();
+                // Do not notify the employee of appointments they created themselves
+                if (creatorClean === sessionNameClean) return false;
+
+                const matchesProfId = myProf && (
+                    String(a.professionalId) === String(myProf.id) ||
+                    (a.isMutual && String(a.professionalId2) === String(myProf.id))
+                );
+                const matchesProfName =
+                    (a.professionalName && a.professionalName.trim().toLowerCase() === sessionNameClean) ||
+                    (a.isMutual && a.professionalName2 && a.professionalName2.trim().toLowerCase() === sessionNameClean);
+
+                return Boolean(matchesProfId || matchesProfName);
+            });
         }
 
         // Sort by creation date descending
         filteredAppts.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
-        const readNotifIds = JSON.parse(localStorage.getItem('raiosol_read_notifications') || '[]');
+        const storageKey = getReadNotificationsKey();
+        const readNotifIds = JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem('raiosol_read_notifications') || '[]');
 
         // Track new dynamic notification alerts
         const currentUnreadIds = filteredAppts
@@ -5121,8 +5253,21 @@ function closeAppointmentModal() {
                 newUnreadIds.forEach(id => {
                     const appt = filteredAppts.find(a => String(a.id) === id);
                     if (appt) {
-                        const toastMsg = `${appt.createdBy} fez um agendamento...`;
-                        showToast(toastMsg, 'info', 6000);
+                        const dateStr = formatStringDateBR(appt.date);
+                        const targetProf = professionals.find(p => String(p.id) === String(appt.professionalId));
+                        const profLabel = targetProf ? targetProf.name : (appt.professionalName || '');
+                        const creatorLabel = appt.createdBy || 'Adm. Deise Rose';
+
+                        const notifTitle = isAdminDeise
+                            ? `🔔 Novo Agendamento • ${creatorLabel}`
+                            : `🔔 Novo Horário para Você!`;
+
+                        const notifBody = isAdminDeise
+                            ? `${creatorLabel} agendou ${appt.client} (${appt.serviceName})${profLabel ? ' com ' + profLabel : ''} em ${dateStr} às ${appt.timeStart}`
+                            : `${creatorLabel} agendou ${appt.client} para ${appt.serviceName} em ${dateStr} às ${appt.timeStart}`;
+
+                        showToast(notifBody, 'info', 7000);
+                        triggerPhoneNotification(notifTitle, notifBody, appt);
                     }
                 });
                 playNotificationSound();
@@ -5132,14 +5277,23 @@ function closeAppointmentModal() {
 
         notifData = filteredAppts.map(appt => {
             const dateStr = formatStringDateBR(appt.date);
-            const msg = `${appt.createdBy} agendou ${appt.client} para ${appt.serviceName} em ${dateStr} às ${appt.timeStart}`;
+            const targetProf = professionals.find(p => String(p.id) === String(appt.professionalId));
+            const profLabel = targetProf ? targetProf.name : (appt.professionalName || '');
+            const creatorLabel = appt.createdBy || 'Adm. Deise Rose';
+
+            const msg = isAdminDeise
+                ? `${creatorLabel} agendou ${appt.client} para ${appt.serviceName}${profLabel ? ' (Prof. ' + profLabel + ')' : ''} em ${dateStr} às ${appt.timeStart}`
+                : `${creatorLabel} agendou para você: ${appt.client} • ${appt.serviceName} em ${dateStr} às ${appt.timeStart}`;
+
             const timeLabel = appt.createdAt 
                 ? `${timeAgo(appt.createdAt)} (${formatDateTimeBR(appt.createdAt)})`
                 : 'agora mesmo';
 
             return {
                 id: appt.id,
-                createdBy: appt.createdBy || 'Recepção',
+                createdBy: creatorLabel,
+                targetProfName: profLabel,
+                isForEmployee: !isAdminDeise,
                 client: appt.client || 'Cliente',
                 serviceName: appt.serviceName || 'Procedimento',
                 dateBR: dateStr,
@@ -5161,18 +5315,20 @@ function closeAppointmentModal() {
 
     /** Mark a notification as read and save to localStorage */
     function markNotificationAsRead(id) {
-        const readNotifIds = JSON.parse(localStorage.getItem('raiosol_read_notifications') || '[]');
+        const storageKey = getReadNotificationsKey();
+        const readNotifIds = JSON.parse(localStorage.getItem(storageKey) || '[]');
         const stringId = String(id);
         if (!readNotifIds.includes(stringId)) {
             readNotifIds.push(stringId);
-            localStorage.setItem('raiosol_read_notifications', JSON.stringify(readNotifIds));
+            localStorage.setItem(storageKey, JSON.stringify(readNotifIds));
             rebuildNotifications();
         }
     }
 
     /** Mark all current notifications as read */
     function markAllNotificationsAsRead() {
-        const readNotifIds = JSON.parse(localStorage.getItem('raiosol_read_notifications') || '[]');
+        const storageKey = getReadNotificationsKey();
+        const readNotifIds = JSON.parse(localStorage.getItem(storageKey) || '[]');
         let changed = false;
         notifData.forEach(n => {
             const stringId = String(n.id);
@@ -5182,7 +5338,7 @@ function closeAppointmentModal() {
             }
         });
         if (changed) {
-            localStorage.setItem('raiosol_read_notifications', JSON.stringify(readNotifIds));
+            localStorage.setItem(storageKey, JSON.stringify(readNotifIds));
             rebuildNotifications();
         }
     }
@@ -5240,6 +5396,7 @@ function closeAppointmentModal() {
         if (!container) return;
 
         const unreadCount = notifData.filter(n => !n.read).length;
+        const canAskPerm = ('Notification' in window) && Notification.permission !== 'granted';
 
         container.innerHTML = `
             <div class="notif-header" style="padding:14px 16px;background:linear-gradient(135deg,#FAF6EE,#FFFDF9);border-bottom:1px solid #EDE3CE;">
@@ -5250,6 +5407,12 @@ function closeAppointmentModal() {
                 </div>
                 ${unreadCount > 0 ? `<button type="button" class="btn-mark-all-notif" style="background:none;border:none;color:#9A731F;font-size:11.5px;font-weight:800;cursor:pointer;text-decoration:underline;">Marcar lidas</button>` : ''}
             </div>
+            ${canAskPerm ? `
+            <div style="padding:8px 12px;background:#FFFBEB;border-bottom:1px solid #FDE68A;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <span style="font-size:11.5px;font-weight:700;color:#92400E;">📲 Receber alertas na barra do celular + vibração</span>
+                <button type="button" class="btn-enable-mobile-notif" style="padding:4px 10px;border-radius:999px;border:none;background:#C9A84C;color:#fff;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;">Ativar</button>
+            </div>
+            ` : ''}
             <div class="notif-list" style="max-height:390px;padding:4px 0;">
                 ${notifData.length === 0 ? '<div class="notif-empty">Nenhuma notificação recente</div>' : ''}
                 ${notifData.map(n => {
@@ -5257,12 +5420,15 @@ function closeAppointmentModal() {
                     const avHTML = (creatorProf && creatorProf.avatar && String(creatorProf.avatar).startsWith('data:image/'))
                         ? `<img src="${creatorProf.avatar}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid #C9A84C;flex-shrink:0;">`
                         : getIllustratedAvatarSVG(n.createdBy || 'Studio', 36);
+                    const actionText = n.isForEmployee
+                        ? `agendou para <strong>você</strong> • Cliente: <strong>${n.client}</strong>`
+                        : `agendou <strong>${n.client}</strong>${n.targetProfName ? ` (Prof. <strong>${n.targetProfName}</strong>)` : ''}`;
                     return `
                     <div class="notif-item notif-card-v4 ${n.read ? 'notif-read' : 'notif-unread'}" data-notif-id="${n.id}">
                         ${avHTML}
                         <div class="notif-content" style="min-width:0;">
                             <p class="notif-message" style="font-size:12.5px;line-height:1.4;color:#1F1A14;margin:0 0 4px;">
-                                <strong>${n.createdBy}</strong> agendou <strong>${n.client}</strong> para
+                                <strong>${n.createdBy}</strong> ${actionText} para
                                 <span style="background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:4px;font-weight:700;font-size:11.5px;">${n.serviceName}</span>
                             </p>
                             <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
@@ -5275,6 +5441,14 @@ function closeAppointmentModal() {
                 }).join('')}
             </div>
         `;
+
+        const enableMobileBtn = container.querySelector('.btn-enable-mobile-notif');
+        if (enableMobileBtn) {
+            enableMobileBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                requestMobileNotificationPermission(true);
+            });
+        }
 
         const markAllBtn = container.querySelector('.btn-mark-all-notif');
         if (markAllBtn) {
