@@ -10679,21 +10679,21 @@ body.dark-mode .stat-v2-rev-month {
   flex-shrink: 0 !important;
 }
 
-/* 3. GRADE DE HORÁRIOS ENQUADRADA (68px POR 30 MIN) & CARDS DE AGENDAMENTO (IMAGEM 5) */
+/* 3. GRADE DE HORÁRIOS ENQUADRADA (86px POR FAIXA) & CARDS DE AGENDAMENTO SEM CORTE */
 .calendar-time-cell {
-  height: 68px !important;
-  min-height: 68px !important;
+  height: 86px !important;
+  min-height: 86px !important;
   align-items: flex-start !important;
   justify-content: center !important;
-  padding-top: 4px !important;
-  font-size: 12px !important;
+  padding-top: 6px !important;
+  font-size: 12.5px !important;
   font-weight: 700 !important;
   color: #6E6252 !important;
   box-sizing: border-box !important;
 }
 .calendar-cell {
-  height: 68px !important;
-  min-height: 68px !important;
+  height: 86px !important;
+  min-height: 86px !important;
   box-sizing: border-box !important;
 }
 .calendar-grid .appointment-block {
@@ -10714,25 +10714,29 @@ body.dark-mode .stat-v2-rev-month {
   height: 100%;
   width: 100%;
   min-width: 0;
+  box-sizing: border-box;
 }
 .appt-v3-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 4px;
+  gap: 3px;
   line-height: 1.1;
+  width: 100%;
+  min-width: 0;
 }
 .appt-v3-time {
   font-size: 11px;
   font-weight: 800;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .appt-v3-badge {
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 800;
-  padding: 1.5px 5px;
+  padding: 1.5px 4px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.82);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -10745,7 +10749,8 @@ body.dark-mode .appt-v3-badge {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  line-height: 1.2;
+  line-height: 1.15;
+  width: 100%;
 }
 .appt-v3-meta {
   display: flex;
@@ -10754,19 +10759,24 @@ body.dark-mode .appt-v3-badge {
   gap: 4px;
   font-size: 11px;
   font-weight: 600;
-  opacity: 0.92;
+  opacity: 0.94;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
+  width: 100%;
+  min-width: 0;
 }
 .appt-v3-actions {
   display: flex;
   align-items: center;
   gap: 4px;
   margin-top: 2px;
+  width: 100%;
+  min-width: 0;
 }
 .appt-v3-btn {
-  padding: 3px 7px;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 3.5px 4px;
   border-radius: 6px;
   font-size: 10.5px;
   font-weight: 800;
@@ -10774,8 +10784,11 @@ body.dark-mode .appt-v3-badge {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  justify-content: center;
+  gap: 2px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   box-shadow: 0 1px 3px rgba(0,0,0,0.12);
   transition: transform 0.12s ease, filter 0.12s ease;
 }

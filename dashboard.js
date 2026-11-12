@@ -4077,7 +4077,7 @@ function closeAppointmentModal() {
                 const [startH, startM] = appt.timeStart.split(':').map(Number);
                 const [cellH, cellM] = roundedTime.split(':').map(Number);
                 const diffMins = (startH * 60 + startM) - (cellH * 60 + cellM);
-                const cellHeight = 68; // 68px por faixa de 30 minutos (enquadramento exato 08:00 -> 08:30)
+                const cellHeight = 86; // 86px por faixa de 30 minutos
                 const slotDuration = 30;
                 const offsetPx = diffMins * (cellHeight / slotDuration);
                 apptBlock.style.top = `${offsetPx + 1}px`;
@@ -4085,11 +4085,21 @@ function closeAppointmentModal() {
                 apptBlock.style.width = `calc(${colWidth}% - 4px)`;
                 apptBlock.style.zIndex = '15';
 
-                // Calculate height based on duration so 08:00-08:30 ends right on the 08:30 line
+                // Estica o bloco até a linha do horário final (ex: 08:00-08:30 preenche a faixa 08:00 e a faixa 08:30 se 08:30 estiver livre)
                 const [endH, endM] = appt.timeEnd.split(':').map(Number);
                 const durationMinutes = (endH - startH) * 60 + (endM - startM);
                 const finalDuration = Math.max(15, durationMinutes);
-                const blockHeight = Math.max(32, (finalDuration / slotDuration) * cellHeight - 3);
+                const endTotalMins = endH * 60 + endM;
+                const hasNextAtEnd = profAppts.some(other => {
+                    if (other.id === appt.id) return false;
+                    const [osh, osm] = (other.timeStart || '00:00').split(':').map(Number);
+                    const oStart = osh * 60 + osm;
+                    return oStart >= endTotalMins && oStart < endTotalMins + 30;
+                });
+                const visualDuration = (!isBlocked && !hasNextAtEnd && (endTotalMins + 30 <= BUSINESS_END * 60))
+                    ? (finalDuration + 30)
+                    : finalDuration;
+                const blockHeight = Math.max(42, (visualDuration / slotDuration) * cellHeight - 3);
                 apptBlock.style.height = `${blockHeight}px`;
 
                 const mutualBadge = appt.isMutual ? '<span style="background: rgba(0,0,0,0.12); font-size: 9.5px; padding: 1px 4px; border-radius: 4px; font-weight: 800; margin-right: 3px;">MÚTUO</span>' : '';
@@ -4115,54 +4125,35 @@ function closeAppointmentModal() {
                             </span>
                         </div>
                     `;
-                } else if (finalDuration < 30) {
+                } else if (visualDuration < 30) {
                     apptBlock.style.padding = '3px 7px';
                     apptBlock.innerHTML = `
                         <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;height:100%;width:100%;overflow:hidden;">
                             <span style="font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
                                 ${appt.timeStart} ${mutualBadge}${appt.serviceName} (${appt.client})
                             </span>
-                            <button type="button" class="appt-v3-btn appt-v3-btn--wa" data-qa="wa" title="Mandar confirmação no WhatsApp" style="padding:2px 6px;font-size:10px;">💬 Zap</button>
-                        </div>
-                    `;
-                } else if (finalDuration === 30) {
-                    // Card de 30 minutos (65px de altura): exibe horário, status, serviço, cliente e botão Zap visível!
-                    apptBlock.style.padding = '5px 8px';
-                    apptBlock.innerHTML = `
-                        <div class="appt-v3-card-inner">
-                            <div class="appt-v3-top">
-                                <span class="appt-v3-time">${appt.timeStart}–${appt.timeEnd}</span>
-                                ${v2BadgeHTML}
-                            </div>
-                            <div class="appt-v3-service appointment-service">${mutualBadge}${appt.serviceName}</div>
-                            <div class="appt-v3-meta">
-                                <span class="appointment-client" style="overflow:hidden;text-overflow:ellipsis;">👤 ${appt.client} ${shortPrice ? '• ' + shortPrice : ''}</span>
-                                <span style="display:inline-flex;gap:3px;flex-shrink:0;">
-                                    <button type="button" class="appt-v3-btn appt-v3-btn--wa" data-qa="wa" title="Enviar confirmação no WhatsApp" style="padding:2px 6px;font-size:10px;">💬 Zap</button>
-                                    ${appt.status !== 'Concluído' ? '<button type="button" class="appt-v3-btn appt-v3-btn--done" data-qa="done" title="Concluir atendimento" style="padding:2px 5px;font-size:10px;">✓</button>' : ''}
-                                </span>
-                            </div>
+                            <button type="button" class="appt-v3-btn appt-v3-btn--wa" data-qa="wa" title="Mandar confirmação no WhatsApp" style="padding:2px 6px;font-size:10px;flex:0 0 auto;">💬 Zap</button>
                         </div>
                     `;
                 } else {
-                    // Card de 45m / 60m+ (Image 5): exibe botões largos "💬 Mandar Zap" e "✓ Concluir"
-                    apptBlock.style.padding = '7px 9px';
+                    // Card completo em 4 linhas sem cortar nome da cliente nem os botões!
+                    apptBlock.style.padding = '6px 8px';
                     apptBlock.innerHTML = `
                         <div class="appt-v3-card-inner">
                             <div>
-                                <div class="appt-v3-top" style="margin-bottom:3px;">
+                                <div class="appt-v3-top" style="margin-bottom:2px;">
                                     <span class="appt-v3-time">${appt.timeStart}–${appt.timeEnd}</span>
                                     ${v2BadgeHTML}
                                 </div>
-                                <div class="appt-v3-service appointment-service" style="font-size:12.5px;margin-bottom:2px;">${mutualBadge}${appt.serviceName}</div>
-                                <div class="appt-v3-meta">
-                                    <span class="appointment-client" style="overflow:hidden;text-overflow:ellipsis;">👤 ${appt.client}</span>
-                                    <strong style="font-size:11.5px;">${shortPrice}</strong>
+                                <div class="appt-v3-service appointment-service" style="font-size:12px;margin-bottom:2px;">${mutualBadge}${appt.serviceName}</div>
+                                <div class="appt-v3-meta" style="margin-bottom:3px;">
+                                    <span class="appointment-client" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">👤 ${appt.client}</span>
+                                    <strong style="font-size:11px;flex-shrink:0;">${shortPrice}</strong>
                                 </div>
                             </div>
                             <div class="appt-v3-actions">
-                                <button type="button" class="appt-v3-btn appt-v3-btn--wa" data-qa="wa" title="Enviar confirmação no WhatsApp">💬 Mandar Zap</button>
-                                ${appt.status !== 'Concluído' ? '<button type="button" class="appt-v3-btn appt-v3-btn--done" data-qa="done" title="Concluir em 1 clique">✓ Concluir</button>' : ''}
+                                <button type="button" class="appt-v3-btn appt-v3-btn--wa" data-qa="wa" title="Enviar confirmação no WhatsApp">💬 Zap</button>
+                                ${appt.status !== 'Concluído' ? '<button type="button" class="appt-v3-btn appt-v3-btn--done" data-qa="done" title="Concluir atendimento em 1 clique">✓ Concluir</button>' : ''}
                             </div>
                         </div>
                     `;
@@ -4283,9 +4274,9 @@ function closeAppointmentModal() {
             const headerCell = grid.querySelector('.calendar-header-cell');
             const headerH = headerCell ? headerCell.offsetHeight : 82;
 
-            let topPx = headerH + (((clampedHr - BUSINESS_START) * 60 + clampedMn) * (68 / 30));
+            let topPx = headerH + (((clampedHr - BUSINESS_START) * 60 + clampedMn) * (86 / 30));
             if (matchingTimeCell && matchingTimeCell.offsetTop > 0) {
-                const cellH = matchingTimeCell.offsetHeight || 68;
+                const cellH = matchingTimeCell.offsetHeight || 86;
                 const remMins = (hr >= BUSINESS_START && hr < BUSINESS_END) ? (mn % 30) : 0;
                 topPx = matchingTimeCell.offsetTop + (remMins / 30) * cellH;
             }
