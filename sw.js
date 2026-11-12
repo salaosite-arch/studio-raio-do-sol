@@ -1,4 +1,4 @@
-const CACHE_NAME = 'raiodosol-cache-v15';
+const CACHE_NAME = 'raiodosol-cache-v16';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -40,7 +40,9 @@ self.addEventListener('activate', event => {
           try {
             client.postMessage({ type: 'SW_UPDATED_RELOAD', version: CACHE_NAME });
             if ('navigate' in client && client.url) {
-              await client.navigate(client.url);
+              const u = new URL(client.url);
+              u.searchParams.set('_v', CACHE_NAME);
+              await client.navigate(u.toString());
             }
           } catch (e) {
             console.warn('[Service Worker] Client navigate fallback:', e);

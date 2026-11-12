@@ -335,8 +335,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             showToast('Login realizado com sucesso! Redirecionando...', 'success');
             setTimeout(() => {
-                window.location.href = 'dashboard.html';
-            }, 1200);
+                window.location.href = 'dashboard.html?_v=' + Date.now();
+            }, 900);
 
         } catch (err) {
             console.error(err);

@@ -17,24 +17,25 @@
     
     <script>
         (function() {
-            const APP_VERSION = 'v59';
+            const APP_VERSION = 'v60';
             let reloading = false;
-            const triggerSafeReload = () => {
+            const triggerSafeReload = (ver) => {
                 if (reloading) return;
                 reloading = true;
-                window.location.reload();
+                const vParam = ver || APP_VERSION || Date.now();
+                window.location.replace(window.location.pathname + '?_v=' + vParam);
             };
 
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.addEventListener('controllerchange', triggerSafeReload);
+                navigator.serviceWorker.addEventListener('controllerchange', () => triggerSafeReload());
                 navigator.serviceWorker.addEventListener('message', (event) => {
                     if (event.data && event.data.type === 'SW_UPDATED_RELOAD') {
-                        triggerSafeReload();
+                        triggerSafeReload(event.data.version);
                     }
                 });
 
                 window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('sw.js?v=15', { updateViaCache: 'none' })
+                    navigator.serviceWorker.register('sw.js?v=16', { updateViaCache: 'none' })
                         .then(reg => {
                             if (reg.update) reg.update();
                             if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -48,7 +49,7 @@
                                     });
                                 }
                             });
-                            setInterval(() => { if (!document.hidden && reg.update) reg.update(); }, 25000);
+                            setInterval(() => { if (!document.hidden && reg.update) reg.update(); }, 15000);
                             document.addEventListener('visibilitychange', () => {
                                 if (!document.hidden && reg.update) reg.update();
                             });
@@ -63,21 +64,23 @@
                     .then(async (data) => {
                         if (!data || !data.version) return;
                         const savedVer = localStorage.getItem('raiosol_app_version');
-                        if (savedVer && savedVer !== data.version) {
+                        const alreadyReloaded = sessionStorage.getItem('raiosol_reloaded_' + data.version) === 'true';
+                        if ((APP_VERSION !== data.version || (savedVer && savedVer !== data.version)) && !alreadyReloaded) {
+                            sessionStorage.setItem('raiosol_reloaded_' + data.version, 'true');
                             localStorage.setItem('raiosol_app_version', data.version);
                             if ('caches' in window) {
                                 const keys = await caches.keys();
                                 await Promise.all(keys.map(k => caches.delete(k)));
                             }
-                            triggerSafeReload();
-                        } else if (!savedVer) {
+                            triggerSafeReload(data.version);
+                        } else {
                             localStorage.setItem('raiosol_app_version', data.version);
                         }
                     })
                     .catch(() => {});
             };
             checkServerVersion();
-            setInterval(() => { if (!document.hidden) checkServerVersion(); }, 30000);
+            setInterval(() => { if (!document.hidden) checkServerVersion(); }, 10000);
             document.addEventListener('visibilitychange', () => {
                 if (!document.hidden) checkServerVersion();
             });
@@ -1631,6 +1634,6 @@
     </div><!-- /.dashboard-layout -->
 
     <script type="module" src="api-config.js?v=11"></script>
-    <script type="module" src="dashboard.js?v=59"></script>
+    <script type="module" src="dashboard.js?v=60"></script>
 </body>
 </html>

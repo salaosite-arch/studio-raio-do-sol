@@ -93,7 +93,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: 'v59', swVersion: 'raiodosol-cache-v15', timestamp: Date.now() });
+    res.json({ version: 'v60', swVersion: 'raiodosol-cache-v16', timestamp: Date.now() });
 });
 
 // ==========================================
