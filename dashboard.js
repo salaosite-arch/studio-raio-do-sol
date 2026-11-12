@@ -287,6 +287,64 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    /** Gera Avatar Ilustrado SVG (Masculino ou Feminino) para profissionais sem foto de perfil */
+    function getIllustratedAvatarSVG(name, sizePx = 34) {
+        const cleanName = String(name || '').trim();
+        const firstName = cleanName.split(/\s+/)[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const maleNames = ['gustavo', 'mateus', 'matheus', 'carlos', 'rafael', 'joao', 'pedro', 'lucas', 'bruno', 'diego', 'felipe', 'gabriel', 'rodrigo', 'thiago', 'anderson', 'marcos', 'leonardo', 'daniel'];
+        const isMale = maleNames.includes(firstName);
+
+        let hash = 0;
+        for (let i = 0; i < cleanName.length; i++) {
+            hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const idx = Math.abs(hash);
+
+        if (isMale) {
+            const mPalettes = [
+                { bg1: '#DBEAFE', bg2: '#BFDBFE', border: '#60A5FA', shirt: '#1E3A8A', hair: '#1F2937', skin: '#F3C6A5' },
+                { bg1: '#E0E7FF', bg2: '#C7D2FE', border: '#818CF8', shirt: '#312E81', hair: '#292524', skin: '#EAB68F' },
+                { bg1: '#CCFBF1', bg2: '#99F6E4', border: '#2DD4BF', shirt: '#115E59', hair: '#1C1917', skin: '#F3C6A5' }
+            ];
+            const pal = mPalettes[idx % mPalettes.length];
+            const gid = 'm_' + idx + '_' + sizePx;
+            return `<svg width="${sizePx}" height="${sizePx}" viewBox="0 0 40 40" style="border-radius:50%;border:1.5px solid ${pal.border};flex-shrink:0;box-shadow:0 2px 5px rgba(0,0,0,0.08);">
+                <defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${pal.bg1}"/><stop offset="100%" stop-color="${pal.bg2}"/></linearGradient></defs>
+                <circle cx="20" cy="20" r="20" fill="url(#${gid})"/>
+                <path d="M8 38 C8 29 32 29 32 38" fill="${pal.shirt}"/>
+                <path d="M17 28 L20 33 L23 28 Z" fill="#FFFFFF"/>
+                <circle cx="20" cy="16.5" r="7" fill="${pal.skin}"/>
+                <path d="M13 15 C13 9.5 27 9.5 27 15 C27 12.5 24 11 20 11 C16 11 13 12.5 13 15 Z" fill="${pal.hair}"/>
+                <circle cx="17.5" cy="16.5" r="0.9" fill="#1F2937"/>
+                <circle cx="22.5" cy="16.5" r="0.9" fill="#1F2937"/>
+                <path d="M17.5 20 Q20 21.8 22.5 20" stroke="#9A3412" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+            </svg>`;
+        } else {
+            const fPalettes = [
+                { bg1: '#FCE7F3', bg2: '#FBCFE8', border: '#F472B6', shirt: '#BE185D', hair: '#3E2723', skin: '#F5CBA7' },
+                { bg1: '#FEF3C7', bg2: '#FDE68A', border: '#F59E0B', shirt: '#B45309', hair: '#4A2C11', skin: '#F3C6A5' },
+                { bg1: '#EDE9FE', bg2: '#DDD6FE', border: '#A78BFA', shirt: '#6D28D9', hair: '#27171A', skin: '#F5CBA7' },
+                { bg1: '#D1FAE5', bg2: '#A7F3D0', border: '#34D399', shirt: '#047857', hair: '#3B2314', skin: '#EAB68F' },
+                { bg1: '#FFEDD5', bg2: '#FED7AA', border: '#FB923C', shirt: '#C2410C', hair: '#2D1B12', skin: '#F5CBA7' }
+            ];
+            const pal = fPalettes[idx % fPalettes.length];
+            const gid = 'f_' + idx + '_' + sizePx;
+            return `<svg width="${sizePx}" height="${sizePx}" viewBox="0 0 40 40" style="border-radius:50%;border:1.5px solid ${pal.border};flex-shrink:0;box-shadow:0 2px 5px rgba(0,0,0,0.08);">
+                <defs><linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="${pal.bg1}"/><stop offset="100%" stop-color="${pal.bg2}"/></linearGradient></defs>
+                <circle cx="20" cy="20" r="20" fill="url(#${gid})"/>
+                <path d="M11 16 C10 26 12 32 14 35 L26 35 C28 32 30 26 29 16 C29 9 11 9 11 16 Z" fill="${pal.hair}"/>
+                <path d="M9 38 C9 29.5 31 29.5 31 38" fill="${pal.shirt}"/>
+                <circle cx="20" cy="17" r="6.6" fill="${pal.skin}"/>
+                <path d="M13.2 15.5 C14.5 10.5 25.5 10.5 26.8 15.5 C24 12.8 16 12.8 13.2 15.5 Z" fill="${pal.hair}"/>
+                <circle cx="17.6" cy="16.8" r="0.85" fill="#1F2937"/>
+                <circle cx="22.4" cy="16.8" r="0.85" fill="#1F2937"/>
+                <path d="M17.8 20.2 Q20 21.8 22.2 20.2" stroke="#E11D48" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+                <circle cx="13.5" cy="18.5" r="1.1" fill="#FBBF24"/>
+                <circle cx="26.5" cy="18.5" r="1.1" fill="#FBBF24"/>
+            </svg>`;
+        }
+    }
+
     function populateMainFilters() {
         const filterProf = document.getElementById('filterProfissional');
         if (filterProf) {
@@ -306,6 +364,200 @@ document.addEventListener('DOMContentLoaded', () => {
             filterSvc.innerHTML = '<option value="">Serviço</option>' +
                 services.map(s => `<option value="${s.name.toLowerCase()}">${s.name}</option>`).join('');
             if (currentVal) filterSvc.value = currentVal;
+        }
+
+        syncCustomAgendaFilters();
+    }
+
+    let _customFiltersGlobalClickBound = false;
+    function syncCustomAgendaFilters() {
+        const filterProf = document.getElementById('filterProfissional');
+        const filterSvc = document.getElementById('filterServico');
+        const selDateStr = typeof currentDate !== 'undefined' ? toISODateString(currentDate) : '';
+
+        // 1. Custom Dropdown de Profissionais (Prints 2 e 3)
+        if (filterProf && filterProf.parentElement) {
+            const parent = filterProf.parentElement;
+            parent.classList.add('v4-custom-filter-wrap');
+            filterProf.style.display = 'none';
+
+            let btn = parent.querySelector('.v4-prof-filter-btn');
+            let menu = parent.querySelector('.v4-prof-filter-menu');
+            if (!btn) {
+                btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'v4-custom-filter-btn v4-prof-filter-btn';
+                parent.appendChild(btn);
+            }
+            if (!menu) {
+                menu = document.createElement('div');
+                menu.className = 'v4-custom-filter-menu v4-prof-filter-menu';
+                parent.appendChild(menu);
+
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.v4-custom-filter-menu.open').forEach(m => {
+                        if (m !== menu) m.classList.remove('open');
+                    });
+                    menu.classList.toggle('open');
+                    btn.classList.toggle('open', menu.classList.contains('open'));
+                });
+            }
+
+            const selectedProf = professionals.find(p => String(p.id) === String(filterProf.value));
+            const labelText = selectedProf ? `👩‍🎨 ${selectedProf.name}` : '👥 Todos os Profissionais';
+            btn.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${labelText}</span><span style="color:#9A731F;font-size:11px;">▼</span>`;
+
+            const totalDayCount = appointments.filter(a => a.date === selDateStr && a.status !== 'Cancelado' && a.status !== 'Bloqueado').length;
+            let menuHTML = `
+                <div class="v4-filter-option ${!filterProf.value ? 'active' : ''}" data-prof-val="">
+                    <div class="v4-filter-opt-left">
+                        <span style="width:26px;height:26px;border-radius:50%;background:#FEF3C7;color:#9A731F;display:inline-flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;">👥</span>
+                        <span class="v4-filter-opt-name">Todos os Profissionais</span>
+                    </div>
+                    <span class="v4-filter-badge">${totalDayCount} hoje</span>
+                </div>
+            `;
+
+            professionals.forEach(p => {
+                const hasImg = p.avatar && String(p.avatar).startsWith('data:image/');
+                const avHTML = hasImg
+                    ? `<img src="${p.avatar}" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1.5px solid #C9A84C;flex-shrink:0;">`
+                    : getIllustratedAvatarSVG(p.name, 26);
+                const pCount = appointments.filter(a =>
+                    a.date === selDateStr &&
+                    a.status !== 'Cancelado' &&
+                    a.status !== 'Bloqueado' &&
+                    (String(a.professionalId) === String(p.id) || (a.isMutual && String(a.professionalId2) === String(p.id)))
+                ).length;
+                const isAct = String(filterProf.value) === String(p.id);
+                menuHTML += `
+                    <div class="v4-filter-option ${isAct ? 'active' : ''}" data-prof-val="${p.id}">
+                        <div class="v4-filter-opt-left">
+                            ${avHTML}
+                            <span class="v4-filter-opt-name">${p.name}</span>
+                        </div>
+                        <span class="v4-filter-badge">${pCount} agend.</span>
+                    </div>
+                `;
+            });
+            menu.innerHTML = menuHTML;
+
+            menu.querySelectorAll('.v4-filter-option').forEach(opt => {
+                opt.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const val = opt.dataset.profVal || '';
+                    filterProf.value = val;
+                    menu.classList.remove('open');
+                    btn.classList.remove('open');
+                    if (typeof window.filterCalendarByProfessional === 'function') {
+                        window.filterCalendarByProfessional(val);
+                    } else {
+                        filterProf.dispatchEvent(new Event('change', { bubbles: true }));
+                    }
+                    syncCustomAgendaFilters();
+                });
+            });
+        }
+
+        // 2. Custom Dropdown de Serviços com Busca Instantânea (Print 4)
+        if (filterSvc && filterSvc.parentElement) {
+            const parent = filterSvc.parentElement;
+            parent.classList.add('v4-custom-filter-wrap');
+            filterSvc.style.display = 'none';
+
+            let btn = parent.querySelector('.v4-svc-filter-btn');
+            let menu = parent.querySelector('.v4-svc-filter-menu');
+            if (!btn) {
+                btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'v4-custom-filter-btn v4-svc-filter-btn';
+                parent.appendChild(btn);
+            }
+            if (!menu) {
+                menu = document.createElement('div');
+                menu.className = 'v4-custom-filter-menu v4-svc-filter-menu';
+                parent.appendChild(menu);
+
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.v4-custom-filter-menu.open').forEach(m => {
+                        if (m !== menu) m.classList.remove('open');
+                    });
+                    menu.classList.toggle('open');
+                    btn.classList.toggle('open', menu.classList.contains('open'));
+                    const sInp = menu.querySelector('.v4-filter-search-input');
+                    if (menu.classList.contains('open') && sInp) {
+                        setTimeout(() => sInp.focus(), 40);
+                    }
+                });
+            }
+
+            const selectedSvc = services.find(s => s.name.toLowerCase() === String(filterSvc.value).toLowerCase());
+            const svcLabel = selectedSvc ? `✂️ ${selectedSvc.name}` : '✂️ Todos os Serviços';
+            btn.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${svcLabel}</span><span style="color:#9A731F;font-size:11px;">▼</span>`;
+
+            let svcHTML = `
+                <div class="v4-filter-search-wrap">
+                    <input type="text" class="v4-filter-search-input" placeholder="🔍 Buscar procedimento...">
+                </div>
+                <div class="v4-svc-options-list">
+                    <div class="v4-filter-option ${!filterSvc.value ? 'active' : ''}" data-svc-val="" data-svc-name="todos os servicos">
+                        <div class="v4-filter-opt-left">
+                            <span>✨</span>
+                            <span class="v4-filter-opt-name">Todos os Serviços</span>
+                        </div>
+                        <span class="v4-filter-badge">${services.length} itens</span>
+                    </div>
+            `;
+            services.forEach(s => {
+                const valLower = s.name.toLowerCase();
+                const isAct = String(filterSvc.value).toLowerCase() === valLower;
+                const priceTxt = parseFloat(s.price) === 0 ? 'A combinar' : formatCurrencyBRL(parseFloat(s.price) || 0);
+                svcHTML += `
+                    <div class="v4-filter-option ${isAct ? 'active' : ''}" data-svc-val="${valLower}" data-svc-name="${valLower}">
+                        <div class="v4-filter-opt-left">
+                            <span>✂️</span>
+                            <span class="v4-filter-opt-name">${s.name}</span>
+                        </div>
+                        <span class="v4-filter-price">${priceTxt}</span>
+                    </div>
+                `;
+            });
+            svcHTML += `</div>`;
+            menu.innerHTML = svcHTML;
+
+            const searchInp = menu.querySelector('.v4-filter-search-input');
+            if (searchInp) {
+                searchInp.addEventListener('click', e => e.stopPropagation());
+                searchInp.addEventListener('input', () => {
+                    const q = searchInp.value.toLowerCase().trim();
+                    menu.querySelectorAll('.v4-svc-options-list .v4-filter-option').forEach(opt => {
+                        const nm = opt.dataset.svcName || '';
+                        opt.style.display = (!q || nm.includes(q) || opt.dataset.svcVal === '') ? 'flex' : 'none';
+                    });
+                });
+            }
+
+            menu.querySelectorAll('.v4-filter-option').forEach(opt => {
+                opt.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const val = opt.dataset.svcVal || '';
+                    filterSvc.value = val;
+                    menu.classList.remove('open');
+                    btn.classList.remove('open');
+                    filterSvc.dispatchEvent(new Event('change', { bubbles: true }));
+                    syncCustomAgendaFilters();
+                });
+            });
+        }
+
+        if (!_customFiltersGlobalClickBound) {
+            _customFiltersGlobalClickBound = true;
+            document.addEventListener('click', () => {
+                document.querySelectorAll('.v4-custom-filter-menu.open').forEach(m => m.classList.remove('open'));
+                document.querySelectorAll('.v4-custom-filter-btn.open').forEach(b => b.classList.remove('open'));
+            });
         }
     }
 
@@ -1566,13 +1818,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         modal.innerHTML = `
             <div class="modal-card glass-card appt-modal-card">
-                <div class="appt-modal-header">
-                    <h2 class="modal-title">Novo Agendamento</h2>
-                    <button class="appt-modal-close" aria-label="Fechar">&times;</button>
+                <div class="appt-modal-header" style="align-items:flex-start;border-bottom:1px solid #EDE5D5;padding-bottom:14px;margin-bottom:20px;">
+                    <div>
+                        <span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;background:#FAF3E0;color:#9A731F;font-size:10.5px;font-weight:800;letter-spacing:0.5px;margin-bottom:6px;">✨ AGENDAMENTO INTELIGENTE • AGENDA 2.0</span>
+                        <h2 class="modal-title">Novo Agendamento</h2>
+                        <p style="margin:3px 0 0;font-size:12.5px;color:#6E6252;">Preencha os dados para reservar horário na grade</p>
+                    </div>
+                    <button class="appt-modal-close" aria-label="Fechar" style="background:#FAF6EE;border:1px solid #E5D9C3;">&times;</button>
                 </div>
                 <form id="newAppointmentForm" class="appt-form" novalidate>
                     <div class="form-group">
-                        <label for="apptProfessional" class="form-label">Profissional</label>
+                        <label for="apptProfessional" class="form-label">👩‍🎨 Profissional</label>
                         <select id="apptProfessional" class="form-input appt-select" required>
                             <option value="">Selecione um profissional</option>
                             ${profOptions}
@@ -1603,7 +1859,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div class="form-group">
-                        <label for="apptClient" class="form-label">Cliente</label>
+                        <label for="apptClient" class="form-label">💎 Cliente</label>
                         <div class="client-autocomplete-container">
                             <input type="text" id="apptClient" class="form-input" placeholder="Pesquise ou digite o nome do cliente" required autocomplete="off">
                             <div class="client-autocomplete-dropdown" id="apptClientAutocomplete"></div>
@@ -1623,7 +1879,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div class="form-group" style="position: relative;">
-                        <label class="form-label">Serviço</label>
+                        <label class="form-label">✂️ Procedimento / Serviço</label>
                         <select id="apptService" class="form-input appt-select" required style="display: none;">
                             <option value="">Selecione um serviço</option>
                             ${serviceOptions}
@@ -1643,7 +1899,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div class="form-group" id="apptPriceGroup">
-                        <label for="apptPrice" class="form-label">Preço do Serviço (R$)</label>
+                        <label for="apptPrice" class="form-label">💰 Valor do Procedimento (R$)</label>
                         <div class="appt-input-wrapper">
                             <div class="appt-icon">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
@@ -1654,7 +1910,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
 
                     <div class="form-group">
-                        <label for="apptDate" class="form-label">Data</label>
+                        <label for="apptDate" class="form-label">📅 Data do Atendimento</label>
                         <div class="appt-date-nav-wrapper" style="display: flex; gap: 8px; align-items: center; width: 100%;">
                             <button type="button" class="appt-date-nav-btn" id="btnPrevDate" title="Dia Anterior" style="background: none; border: 1px solid var(--neutral-300); border-radius: var(--radius-sm); padding: 8px; color: var(--gold-700); cursor: pointer; display: flex; align-items: center; justify-content: center; height: 46px; width: 40px; transition: all 0.2s;" onmouseover="this.style.background='var(--gold-50)'" onmouseout="this.style.background='none'">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
@@ -1674,7 +1930,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     <div class="form-row" style="display: flex; gap: 12px; width: 100%;">
                         <div class="form-group" style="flex: 1; min-width: 0;">
-                            <label for="apptTimeStart" class="form-label">Horário Início</label>
+                            <label for="apptTimeStart" class="form-label">⏰ Horário Início</label>
                             <div class="appt-input-wrapper">
                                 <div class="appt-icon" style="z-index: 3;">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -1686,7 +1942,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span class="form-error" id="apptTimeStartError"></span>
                         </div>
                         <div class="form-group" style="flex: 1; min-width: 0;">
-                            <label for="apptTimeEnd" class="form-label">Horário Término</label>
+                            <label for="apptTimeEnd" class="form-label">🏁 Horário Término</label>
                             <div class="appt-input-wrapper">
                                 <div class="appt-icon" style="z-index: 3;">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
@@ -3461,8 +3717,8 @@ function closeAppointmentModal() {
             
             const hasValidImage = p.avatar && String(p.avatar).startsWith('data:image/');
             const avatarHTML = hasValidImage 
-                ? `<img src="${p.avatar}" alt="" class="professional-avatar-img" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; margin-bottom: 4px; border: 1px solid var(--gold-border);">`
-                : `<div class="professional-avatar" style="background: ${p.color}; margin-bottom: 4px; width: 32px; height: 32px; font-size: 14px;">${p.initials}</div>`;
+                ? `<img src="${p.avatar}" alt="" class="professional-avatar-img" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; margin-bottom: 4px; border: 2px solid #C9A84C;">`
+                : `<div style="margin-bottom: 4px; display: flex; align-items: center; justify-content: center;">${getIllustratedAvatarSVG(p.name, 36)}</div>`;
 
             const nameParts = String(p.name || '').trim().split(/\s+/);
             const shortName = nameParts.length > 2
@@ -3821,90 +4077,107 @@ function closeAppointmentModal() {
                 const [startH, startM] = appt.timeStart.split(':').map(Number);
                 const [cellH, cellM] = roundedTime.split(':').map(Number);
                 const diffMins = (startH * 60 + startM) - (cellH * 60 + cellM);
-                const offsetPx = diffMins * (40 / 30); // 40px per 30 minutes
-                apptBlock.style.top = `${offsetPx}px`;
+                const cellHeight = 68; // 68px por faixa de 30 minutos (enquadramento exato 08:00 -> 08:30)
+                const slotDuration = 30;
+                const offsetPx = diffMins * (cellHeight / slotDuration);
+                apptBlock.style.top = `${offsetPx + 1}px`;
                 apptBlock.style.left = `calc(${col * colWidth}% + 2px)`;
                 apptBlock.style.width = `calc(${colWidth}% - 4px)`;
-                apptBlock.style.zIndex = '5';
+                apptBlock.style.zIndex = '15';
 
-                // Calculate height based on duration
+                // Calculate height based on duration so 08:00-08:30 ends right on the 08:30 line
                 const [endH, endM] = appt.timeEnd.split(':').map(Number);
                 const durationMinutes = (endH - startH) * 60 + (endM - startM);
                 const finalDuration = Math.max(15, durationMinutes);
-                const cellHeight = 40; // 40px per cell
-                const slotDuration = 30; // 30 minutes per cell
-                const blockHeight = (finalDuration / slotDuration) * cellHeight;
+                const blockHeight = Math.max(32, (finalDuration / slotDuration) * cellHeight - 3);
                 apptBlock.style.height = `${blockHeight}px`;
 
-                const statusIndicator = appt.status === 'Concluído' ? '<span style="color: #2E7D32; font-weight: bold; margin-left: 4px;">✓</span>' : 
-                                        appt.status === 'Cancelado' ? '<span style="color: #C2185B; font-weight: bold; margin-left: 4px;">✗</span>' : '';
-                const mutualBadge = appt.isMutual ? '<span style="background: rgba(255,255,255,0.25); font-size: 11px; padding: 1px 4px; border-radius: 4px; font-weight: 700; margin-right: 4px; letter-spacing: 0.5px;">MÚTUO</span>' : '';
+                const mutualBadge = appt.isMutual ? '<span style="background: rgba(0,0,0,0.12); font-size: 9.5px; padding: 1px 4px; border-radius: 4px; font-weight: 800; margin-right: 3px;">MÚTUO</span>' : '';
+                const v2BadgeHTML = appt.status === 'Concluído'
+                    ? '<span class="appt-v3-badge" style="color:#065F46;">✓ Pago</span>'
+                    : (isInChairNow
+                        ? '<span class="appt-v3-badge" style="color:#0369A1;">💺 Cadeira</span>'
+                        : '<span class="appt-v3-badge" style="color:#92400E;">⏳ Aguard.</span>');
+                const shortPrice = parseFloat(appt.servicePrice) > 0 ? `R$ ${Math.round(parseFloat(appt.servicePrice))}` : '';
 
-                // Adapt content and layout based on block height (duration)
                 if (isBlocked) {
-                    apptBlock.style.padding = '4px 8px';
+                    apptBlock.style.padding = '5px 8px';
                     apptBlock.style.display = 'flex';
                     apptBlock.style.flexDirection = 'column';
                     apptBlock.style.justifyContent = 'center';
                     apptBlock.innerHTML = `
                         <div style="width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit;">
-                            <strong style="font-weight: 700; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; color: inherit;">
-                                🔒 BLOQUEIO
+                            <strong style="font-weight: 800; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; color: inherit;">
+                                🔒 BLOQUEIO (${appt.timeStart}–${appt.timeEnd})
                             </strong>
-                            <span style="font-weight: 600; font-size: 13px; display: block; color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <span style="font-weight: 600; font-size: 11.5px; display: block; color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                 ${appt.serviceName}
                             </span>
-                            <span style="font-size: 11px; opacity: 0.85; display: block; color: inherit;">
-                                ${appt.timeStart} - ${appt.timeEnd}
+                        </div>
+                    `;
+                } else if (finalDuration < 30) {
+                    apptBlock.style.padding = '3px 7px';
+                    apptBlock.innerHTML = `
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;height:100%;width:100%;overflow:hidden;">
+                            <span style="font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                ${appt.timeStart} ${mutualBadge}${appt.serviceName} (${appt.client})
                             </span>
+                            <button type="button" class="appt-v3-btn appt-v3-btn--wa" data-qa="wa" title="Mandar confirmação no WhatsApp" style="padding:2px 6px;font-size:10px;">💬 Zap</button>
                         </div>
                     `;
-                } else if (finalDuration <= 15) {
-                    apptBlock.style.padding = '2px 6px';
+                } else if (finalDuration === 30) {
+                    // Card de 30 minutos (65px de altura): exibe horário, status, serviço, cliente e botão Zap visível!
+                    apptBlock.style.padding = '5px 8px';
                     apptBlock.innerHTML = `
-                        <div style="display: flex; align-items: center; gap: 4px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; color: inherit; height: 100%;">
-                            <strong style="font-weight: 700; flex-shrink: 0; color: inherit; font-size: 13px;">${appt.timeStart}</strong>
-                            <span style="font-weight: 600; text-overflow: ellipsis; overflow: hidden; flex-shrink: 1; color: inherit; font-size: 13px;">${mutualBadge}${appt.serviceName} ${statusIndicator}</span>
-                            <span style="font-style: italic; opacity: 0.85; text-overflow: ellipsis; overflow: hidden; flex-shrink: 1; color: inherit !important; font-size: 13px;">(${appt.client})</span>
-                        </div>
-                    `;
-                } else if (finalDuration <= 30) {
-                    apptBlock.style.padding = '2px 6px';
-                    apptBlock.innerHTML = `
-                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 1px; height: 100%; width: 100%; overflow: hidden;">
-                            <span class="appointment-time" style="font-weight: 700; font-size: 12px; display: block; color: inherit; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0;">${appt.timeStart}–${appt.timeEnd}</span>
-                            <span class="appointment-service" style="font-weight: 600; font-size: 12px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; line-height: 1.15; flex-shrink: 0;">${mutualBadge}${appt.serviceName} ${statusIndicator} <span class="appointment-client" style="font-style: italic; font-weight: 400; opacity: 0.85; color: inherit !important; font-size: 11.5px;">(${appt.client})</span></span>
+                        <div class="appt-v3-card-inner">
+                            <div class="appt-v3-top">
+                                <span class="appt-v3-time">${appt.timeStart}–${appt.timeEnd}</span>
+                                ${v2BadgeHTML}
+                            </div>
+                            <div class="appt-v3-service appointment-service">${mutualBadge}${appt.serviceName}</div>
+                            <div class="appt-v3-meta">
+                                <span class="appointment-client" style="overflow:hidden;text-overflow:ellipsis;">👤 ${appt.client} ${shortPrice ? '• ' + shortPrice : ''}</span>
+                                <span style="display:inline-flex;gap:3px;flex-shrink:0;">
+                                    <button type="button" class="appt-v3-btn appt-v3-btn--wa" data-qa="wa" title="Enviar confirmação no WhatsApp" style="padding:2px 6px;font-size:10px;">💬 Zap</button>
+                                    ${appt.status !== 'Concluído' ? '<button type="button" class="appt-v3-btn appt-v3-btn--done" data-qa="done" title="Concluir atendimento" style="padding:2px 5px;font-size:10px;">✓</button>' : ''}
+                                </span>
+                            </div>
                         </div>
                     `;
                 } else {
-                    apptBlock.style.padding = '4px 7px';
+                    // Card de 45m / 60m+ (Image 5): exibe botões largos "💬 Mandar Zap" e "✓ Concluir"
+                    apptBlock.style.padding = '7px 9px';
                     apptBlock.innerHTML = `
-                        <span class="appointment-time" style="font-weight: 700; font-size: 12.5px; line-height: 1.2; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; flex-shrink: 0;">${appt.timeStart}–${appt.timeEnd}</span>
-                        <span class="appointment-service" style="font-weight: 600; font-size: 12.5px; line-height: 1.2; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit; flex-shrink: 0;">${mutualBadge}${appt.serviceName} ${statusIndicator}</span>
-                        <span class="appointment-client" style="font-style: italic; font-size: 12px; line-height: 1.2; opacity: 0.88; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: inherit !important; flex-shrink: 0;">(${appt.client})</span>
+                        <div class="appt-v3-card-inner">
+                            <div>
+                                <div class="appt-v3-top" style="margin-bottom:3px;">
+                                    <span class="appt-v3-time">${appt.timeStart}–${appt.timeEnd}</span>
+                                    ${v2BadgeHTML}
+                                </div>
+                                <div class="appt-v3-service appointment-service" style="font-size:12.5px;margin-bottom:2px;">${mutualBadge}${appt.serviceName}</div>
+                                <div class="appt-v3-meta">
+                                    <span class="appointment-client" style="overflow:hidden;text-overflow:ellipsis;">👤 ${appt.client}</span>
+                                    <strong style="font-size:11.5px;">${shortPrice}</strong>
+                                </div>
+                            </div>
+                            <div class="appt-v3-actions">
+                                <button type="button" class="appt-v3-btn appt-v3-btn--wa" data-qa="wa" title="Enviar confirmação no WhatsApp">💬 Mandar Zap</button>
+                                ${appt.status !== 'Concluído' ? '<button type="button" class="appt-v3-btn appt-v3-btn--done" data-qa="done" title="Concluir em 1 clique">✓ Concluir</button>' : ''}
+                            </div>
+                        </div>
                     `;
                 }
 
                 if (!isBlocked) {
-                    const qaWrap = document.createElement('div');
-                    qaWrap.className = 'appt-quick-actions';
-                    const waBtn = document.createElement('button');
-                    waBtn.type = 'button';
-                    waBtn.className = 'appt-qa-btn appt-qa-wa';
-                    waBtn.title = 'Enviar confirmação no WhatsApp';
-                    waBtn.textContent = '💬';
-                    waBtn.addEventListener('click', (ev) => {
-                        ev.stopPropagation();
-                        openClientWhatsAppConfirmation(appt);
-                    });
-                    qaWrap.appendChild(waBtn);
-
-                    if (appt.status !== 'Concluído') {
-                        const doneBtn = document.createElement('button');
-                        doneBtn.type = 'button';
-                        doneBtn.className = 'appt-qa-btn appt-qa-done';
-                        doneBtn.title = 'Concluir atendimento em 1 clique';
-                        doneBtn.textContent = '✓';
+                    const waBtn = apptBlock.querySelector('[data-qa="wa"]');
+                    if (waBtn) {
+                        waBtn.addEventListener('click', (ev) => {
+                            ev.stopPropagation();
+                            openClientWhatsAppConfirmation(appt);
+                        });
+                    }
+                    const doneBtn = apptBlock.querySelector('[data-qa="done"]');
+                    if (doneBtn) {
                         doneBtn.addEventListener('click', async (ev) => {
                             ev.stopPropagation();
                             appt.status = 'Concluído';
@@ -3912,9 +4185,7 @@ function closeAppointmentModal() {
                             renderCalendarGrid(document.getElementById('filterProfissional')?.value || null);
                             renderAppointments();
                         });
-                        qaWrap.appendChild(doneBtn);
                     }
-                    apptBlock.appendChild(qaWrap);
                 }
 
                 targetCell.appendChild(apptBlock);
@@ -3991,42 +4262,131 @@ function closeAppointmentModal() {
             }
         }
 
-        // 2. Renderizar Linha do Tempo Ao Vivo ("🔴 AGORA HH:MM") se for hoje
+        // 2. Renderizar Linha do Tempo Ao Vivo ("🔴 AGORA HH:MM") com cálculo exato por offsetTop da célula
         const grid = document.getElementById('calendarGrid');
         if (grid) {
+            // Remover linha antiga ou indicador legado
             const oldLine = document.getElementById('liveTimeIndicator');
             if (oldLine) oldLine.remove();
+            grid.querySelectorAll('.time-indicator').forEach(el => el.remove());
 
             const now = new Date();
-            const isToday = toISODateString(currentDate) === toISODateString(now);
             const hr = now.getHours();
             const mn = now.getMinutes();
-            if (isToday && hr >= BUSINESS_START && hr < BUSINESS_END) {
-                const headerCell = grid.querySelector('.calendar-header-cell');
-                const headerH = headerCell ? headerCell.offsetHeight : 68;
-                const minsSinceStart = (hr - BUSINESS_START) * 60 + mn;
-                const topPx = headerH + (minsSinceStart * (40 / 30));
-                const timeStr = String(hr).padStart(2, '0') + ':' + String(mn).padStart(2, '0');
+            const clampedHr = Math.max(BUSINESS_START, Math.min(BUSINESS_END - 1, hr));
+            const clampedMn = (hr < BUSINESS_START) ? 0 : (hr >= BUSINESS_END ? 30 : mn);
+            const slotHourStr = String(clampedHr).padStart(2, '0') + ':' + (clampedMn < 30 ? '00' : '30');
 
-                const line = document.createElement('div');
-                line.id = 'liveTimeIndicator';
-                line.className = 'live-time-line';
-                line.style.top = `${topPx}px`;
-                line.innerHTML = `
-                    <span class="live-time-badge">🔴 AGORA ${timeStr}</span>
-                    <div class="live-time-rule"></div>
-                `;
-                grid.style.position = 'relative';
-                grid.appendChild(line);
+            // Localiza a célula real de horário na grade para posição 100% precisa
+            const timeCells = Array.from(grid.querySelectorAll('.calendar-time-cell'));
+            const matchingTimeCell = timeCells.find(tc => tc.textContent.trim() === slotHourStr);
+            const headerCell = grid.querySelector('.calendar-header-cell');
+            const headerH = headerCell ? headerCell.offsetHeight : 82;
+
+            let topPx = headerH + (((clampedHr - BUSINESS_START) * 60 + clampedMn) * (68 / 30));
+            if (matchingTimeCell && matchingTimeCell.offsetTop > 0) {
+                const cellH = matchingTimeCell.offsetHeight || 68;
+                const remMins = (hr >= BUSINESS_START && hr < BUSINESS_END) ? (mn % 30) : 0;
+                topPx = matchingTimeCell.offsetTop + (remMins / 30) * cellH;
             }
+
+            const timeStr = String(hr).padStart(2, '0') + ':' + String(mn).padStart(2, '0');
+            const line = document.createElement('div');
+            line.id = 'liveTimeIndicator';
+            line.className = 'live-time-line';
+            line.style.top = `${topPx}px`;
+            line.style.zIndex = '450';
+            line.innerHTML = `
+                <span class="live-time-badge">🔴 AGORA ${timeStr}</span>
+                <div class="live-time-rule"></div>
+            `;
+            grid.style.position = 'relative';
+            grid.appendChild(line);
         }
 
-        // 3. Atualizar contadores nos Chips de Status
+        // 3. Atualizar contadores nos Chips de Status + Os 4 Cards de KPI do Topo (Imagem 2)
         const nonBlocked = displayAppts.filter(a => a.status !== 'Bloqueado');
         const allBlocks = Array.from(document.querySelectorAll('.calendar-grid .appointment-block:not(.appt-blocked)'));
         const chairCount = allBlocks.filter(b => b.dataset.v2Status === 'cadeira').length;
         const doneCount = allBlocks.filter(b => b.dataset.v2Status === 'concluido').length;
         const pendingCount = allBlocks.filter(b => b.dataset.v2Status === 'agendado').length;
+
+        // Atualizar os 4 Cards de KPI do Topo (Imagem 2)
+        const selIso = toISODateString(currentDate);
+        const selD = new Date(currentDate);
+        const prevD = new Date(selD);
+        prevD.setDate(selD.getDate() - (selD.getDay() === 1 ? 2 : 1)); // Dia útil anterior
+        const prevIso = toISODateString(prevD);
+
+        const selDayAppts = appointments.filter(a => a.date === selIso && a.status !== 'Cancelado' && a.status !== 'Bloqueado');
+        const prevDayAppts = appointments.filter(a => a.date === prevIso && a.status !== 'Cancelado' && a.status !== 'Bloqueado');
+        const diffCount = selDayAppts.length - prevDayAppts.length;
+
+        const diffBadgeEl = document.getElementById('statTodayDiffBadge');
+        if (diffBadgeEl) {
+            if (diffCount > 0) {
+                diffBadgeEl.textContent = `+${diffCount} vs ontem`;
+                diffBadgeEl.style.background = '#ECFDF5';
+                diffBadgeEl.style.color = '#059669';
+            } else if (diffCount < 0) {
+                diffBadgeEl.textContent = `${diffCount} vs ontem`;
+                diffBadgeEl.style.background = '#FEF3C7';
+                diffBadgeEl.style.color = '#B45309';
+            } else {
+                diffBadgeEl.textContent = '= igual a ontem';
+                diffBadgeEl.style.background = '#F3EFE6';
+                diffBadgeEl.style.color = '#6E6252';
+            }
+        }
+
+        const ddStr = String(selD.getDate()).padStart(2, '0') + '/' + String(selD.getMonth() + 1).padStart(2, '0');
+        const statusDateLbl = document.getElementById('statStatusDateLabel');
+        if (statusDateLbl && (!session || session.role === 'admin')) {
+            statusDateLbl.textContent = `Status Hoje (${ddStr})`;
+        }
+        const statusPillsEl = document.getElementById('statStatusPills');
+        if (statusPillsEl && (!session || session.role === 'admin')) {
+            statusPillsEl.style.display = 'flex';
+            statusPillsEl.innerHTML = `
+                <span class="stat-v2-pill stat-v2-pill--green">${doneCount} Conf.</span>
+                <span class="stat-v2-pill stat-v2-pill--blue">${chairCount} Cadeira</span>
+                <span class="stat-v2-pill stat-v2-pill--amber">${pendingCount} Pend.</span>
+            `;
+        }
+
+        // Card 3: Ocupação da Equipe
+        const activeProfCount = professionals.length || 1;
+        let totalOccupiedMinsDay = 0;
+        selDayAppts.forEach(a => {
+            if (a.timeStart && a.timeEnd) {
+                const [sh, sm] = a.timeStart.split(':').map(Number);
+                const [eh, em] = a.timeEnd.split(':').map(Number);
+                totalOccupiedMinsDay += Math.max(30, (eh * 60 + em) - (sh * 60 + sm));
+            }
+        });
+        const totalCapacityMins = activeProfCount * 540; // 9h úteis médias por profissional
+        const teamOccPct = Math.min(100, Math.round((totalOccupiedMinsDay / totalCapacityMins) * 100));
+        const freeSlotsEst = Math.max(0, Math.round((totalCapacityMins - totalOccupiedMinsDay) / 45));
+
+        const occTitleEl = document.getElementById('statOccupancyTitle');
+        const occPctEl = document.getElementById('statOccupancyPct');
+        const occBarEl = document.getElementById('statOccupancyBar');
+        const freeSlotsEl = document.getElementById('statFreeSlotsText');
+        if (occTitleEl && (!session || session.role === 'admin')) {
+            occTitleEl.textContent = `Ocupação da Equipe (${professionals.length} Ativos)`;
+        }
+        if (occPctEl) occPctEl.textContent = `${teamOccPct}%`;
+        if (occBarEl) occBarEl.style.width = `${teamOccPct}%`;
+        if (freeSlotsEl) freeSlotsEl.textContent = `${freeSlotsEst} horários livres disponíveis hoje`;
+
+        // Card 4: Previsão Hoje / Mês
+        const todayRev = selDayAppts.reduce((sum, a) => sum + (parseFloat(a.servicePrice) || 0), 0);
+        const revTodayEl = document.getElementById('statRevenueToday');
+        if (revTodayEl && (!session || session.role === 'admin')) {
+            revTodayEl.textContent = formatCurrencyBRL(todayRev).replace(',00', '');
+        }
+
+        syncCustomAgendaFilters();
 
         const chipsWrap = document.getElementById('agendaStatusChips');
         if (chipsWrap) {
@@ -4271,34 +4631,60 @@ function closeAppointmentModal() {
         popover.className = 'appt-popover';
 
         const isBlocked = anchor.classList.contains('appt-blocked');
+        const v2Status = anchor.dataset.v2Status || 'agendado';
+        const statusPillHTML = isBlocked
+            ? '<span style="display:inline-block;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;background:#E5E7EB;color:#374151;margin-bottom:5px;">🔒 AGENDA BLOQUEADA</span>'
+            : (v2Status === 'concluido'
+                ? '<span style="display:inline-block;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;background:#D1FAE5;color:#065F46;margin-bottom:5px;">✓ CONCLUÍDO / PAGO</span>'
+                : (v2Status === 'cadeira'
+                    ? '<span style="display:inline-block;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;background:#E0F2FE;color:#0369A1;margin-bottom:5px;">💺 NA CADEIRA AGORA</span>'
+                    : '<span style="display:inline-block;font-size:10.5px;font-weight:800;padding:3px 9px;border-radius:999px;background:#FEF3C7;color:#92400E;margin-bottom:5px;">⏳ AGENDADO • CONFIRMADO</span>'));
 
         popover.innerHTML = `
-            <div class="popover-header" style="${isBlocked ? 'background: #9e9e9e; color: #fff;' : ''}">
-                <span class="popover-service">${isBlocked ? 'Agenda Bloqueada' : data.service}</span>
-                <button class="popover-close" aria-label="Fechar" style="${isBlocked ? 'color: #fff; opacity: 0.8;' : ''}">&times;</button>
+            <div class="popover-header" style="align-items:flex-start;padding:16px 18px 12px;${isBlocked ? 'background: #4B5563; color: #fff;' : ''}">
+                <div>
+                    ${statusPillHTML}
+                    <span class="popover-service" style="display:block;font-size:1.15rem;line-height:1.2;${isBlocked ? 'color:#fff;' : ''}">${isBlocked ? 'Bloqueio de Horário' : data.service}</span>
+                </div>
+                <button class="popover-close" aria-label="Fechar" style="width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;font-size:18px;${isBlocked ? 'color: #fff;' : ''}">&times;</button>
             </div>
-            <div class="popover-body">
-                <div class="popover-row">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    <span>${isBlocked ? 'Status: Indisponível' : data.client}</span>
+            <div class="popover-body" style="padding:14px 18px 18px;gap:8px;">
+                <div class="pop-info-box">
+                    <div class="pop-info-icon" style="background:#FEF3C7;">👤</div>
+                    <div>
+                        <span class="pop-info-lbl">${isBlocked ? 'STATUS' : 'CLIENTE'}</span>
+                        <span class="pop-info-val">${isBlocked ? 'Indisponível neste período' : data.client}</span>
+                    </div>
                 </div>
-                <div class="popover-row">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    <span>${data.professional}</span>
+                <div class="pop-info-box">
+                    <div class="pop-info-icon" style="background:#EEF2FF;">👩‍🎨</div>
+                    <div>
+                        <span class="pop-info-lbl">PROFISSIONAL</span>
+                        <span class="pop-info-val">${data.professional}</span>
+                    </div>
                 </div>
-                <div class="popover-row">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    <span>${data.time}</span>
+                <div class="pop-info-box">
+                    <div class="pop-info-icon" style="background:#E0F2FE;">⏰</div>
+                    <div>
+                        <span class="pop-info-lbl">HORÁRIO RESERVADO</span>
+                        <span class="pop-info-val">${data.time}</span>
+                    </div>
                 </div>
                 ${isBlocked ? `
-                <div class="popover-row">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                    <span>Motivo: ${data.service}</span>
+                <div class="pop-info-box">
+                    <div class="pop-info-icon" style="background:#F3F4F6;">🔒</div>
+                    <div>
+                        <span class="pop-info-lbl">MOTIVO DO BLOQUEIO</span>
+                        <span class="pop-info-val">${data.service}</span>
+                    </div>
                 </div>
                 ` : `
-                <div class="popover-row popover-price">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                    <span>${data.price}</span>
+                <div class="pop-info-box pop-info-box--price">
+                    <div class="pop-info-icon" style="background:#D1FAE5;">💰</div>
+                    <div>
+                        <span class="pop-info-lbl" style="color:#065F46;">VALOR DO PROCEDIMENTO</span>
+                        <span class="pop-info-val" style="font-size:16px;color:#047857;">${data.price}</span>
+                    </div>
                 </div>
                 `}
             </div>
@@ -4692,14 +5078,17 @@ function closeAppointmentModal() {
         notifData = filteredAppts.map(appt => {
             const dateStr = formatStringDateBR(appt.date);
             const msg = `${appt.createdBy} agendou ${appt.client} para ${appt.serviceName} em ${dateStr} às ${appt.timeStart}`;
-            
-            // Show both relative and absolute date/time
             const timeLabel = appt.createdAt 
                 ? `${timeAgo(appt.createdAt)} (${formatDateTimeBR(appt.createdAt)})`
                 : 'agora mesmo';
 
             return {
                 id: appt.id,
+                createdBy: appt.createdBy || 'Recepção',
+                client: appt.client || 'Cliente',
+                serviceName: appt.serviceName || 'Procedimento',
+                dateBR: dateStr,
+                timeStart: appt.timeStart || '',
                 message: msg,
                 time: timeLabel,
                 read: readNotifIds.includes(String(appt.id))
@@ -4791,30 +5180,54 @@ function closeAppointmentModal() {
         return dropdown;
     }
 
-    /** Render notifications list */
+    /** Render notifications list (Sino de Notificações 2.0 - Print 5) */
     function renderNotifications(container) {
         if (!container) return;
 
         const unreadCount = notifData.filter(n => !n.read).length;
 
         container.innerHTML = `
-            <div class="notif-header">
-                <span class="notif-title">Notificações</span>
-                ${unreadCount > 0 ? `<span class="notif-badge-count">${unreadCount} nova${unreadCount > 1 ? 's' : ''}</span>` : ''}
+            <div class="notif-header" style="padding:14px 16px;background:linear-gradient(135deg,#FAF6EE,#FFFDF9);border-bottom:1px solid #EDE3CE;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:16px;">🔔</span>
+                    <span class="notif-title" style="font-size:15px;">Notificações</span>
+                    ${unreadCount > 0 ? `<span class="notif-badge-count" style="background:#EF4444;color:#fff;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;">${unreadCount} nova${unreadCount > 1 ? 's' : ''}</span>` : ''}
+                </div>
+                ${unreadCount > 0 ? `<button type="button" class="btn-mark-all-notif" style="background:none;border:none;color:#9A731F;font-size:11.5px;font-weight:800;cursor:pointer;text-decoration:underline;">Marcar lidas</button>` : ''}
             </div>
-            <div class="notif-list">
-                ${notifData.length === 0 ? '<div class="notif-empty">Nenhuma notificação</div>' : ''}
-                ${notifData.map(n => `
-                    <div class="notif-item ${n.read ? 'notif-read' : 'notif-unread'}" data-notif-id="${n.id}">
-                        <div class="notif-dot ${n.read ? '' : 'dot-active'}"></div>
-                        <div class="notif-content">
-                            <p class="notif-message">${n.message}</p>
-                            <span class="notif-time">${n.time}</span>
+            <div class="notif-list" style="max-height:390px;padding:4px 0;">
+                ${notifData.length === 0 ? '<div class="notif-empty">Nenhuma notificação recente</div>' : ''}
+                ${notifData.map(n => {
+                    const creatorProf = professionals.find(p => p.name && p.name.toLowerCase() === String(n.createdBy).toLowerCase());
+                    const avHTML = (creatorProf && creatorProf.avatar && String(creatorProf.avatar).startsWith('data:image/'))
+                        ? `<img src="${creatorProf.avatar}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid #C9A84C;flex-shrink:0;">`
+                        : getIllustratedAvatarSVG(n.createdBy || 'Studio', 36);
+                    return `
+                    <div class="notif-item notif-card-v4 ${n.read ? 'notif-read' : 'notif-unread'}" data-notif-id="${n.id}">
+                        ${avHTML}
+                        <div class="notif-content" style="min-width:0;">
+                            <p class="notif-message" style="font-size:12.5px;line-height:1.4;color:#1F1A14;margin:0 0 4px;">
+                                <strong>${n.createdBy}</strong> agendou <strong>${n.client}</strong> para
+                                <span style="background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:4px;font-weight:700;font-size:11.5px;">${n.serviceName}</span>
+                            </p>
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
+                                <span style="font-size:11px;font-weight:700;color:#059669;">📅 ${n.dateBR} às ${n.timeStart}</span>
+                                <span class="notif-time" style="font-size:10.5px;margin:0;">⏱ ${n.time}</span>
+                            </div>
                         </div>
                     </div>
-                `).join('')}
+                `;
+                }).join('')}
             </div>
         `;
+
+        const markAllBtn = container.querySelector('.btn-mark-all-notif');
+        if (markAllBtn) {
+            markAllBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                markAllNotificationsAsRead();
+            });
+        }
 
         // Click handler for each notification (mark as read)
         container.querySelectorAll('.notif-item').forEach(item => {
@@ -5054,11 +5467,14 @@ function closeAppointmentModal() {
     `;
     document.head.appendChild(timeIndicatorStyles);
 
-    // Initialize time indicator
-    createTimeIndicator();
-    updateTimeIndicator();
-    // Update every minute
-    setInterval(updateTimeIndicator, 60000);
+    // Atualiza a Linha do Tempo Ao Vivo ("🔴 AGORA") a cada 30 segundos
+    setInterval(() => {
+        if (typeof currentDate !== 'undefined') {
+            const selStr = toISODateString(currentDate);
+            const displayAppts = appointments.filter(a => a.date === selStr && a.status !== 'Cancelado');
+            updateAgendaV2Widgets(displayAppts);
+        }
+    }, 30000);
 
     // ============================================
     // SECTION 16: KEYBOARD SHORTCUTS
@@ -5468,35 +5884,23 @@ function closeAppointmentModal() {
         }
     }
 
-    /** Update admin metrics labels and icons on dashboard */
+    /** Update admin metrics labels and icons on dashboard (Image 2 KPI Layout) */
     function updateAdminStatsCards() {
         const monthName = currentDate.toLocaleString('pt-BR', { month: 'long' });
         const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+        const ddStr = String(currentDate.getDate()).padStart(2, '0') + '/' + String(currentDate.getMonth() + 1).padStart(2, '0');
 
         const lblAgendamentos = document.querySelector('#statAgendamentos .stat-card-label');
-        if (lblAgendamentos) lblAgendamentos.textContent = 'Agendamentos Hoje:';
+        if (lblAgendamentos) lblAgendamentos.textContent = 'Agendamentos Hoje';
 
-        const lblComissao = document.querySelector('#statProfissionais .stat-card-label');
-        const iconComissao = document.querySelector('#statProfissionais .stat-card-icon');
-        if (lblComissao) lblComissao.textContent = 'Profissionais Ativos:';
-        if (iconComissao) {
-            iconComissao.style.background = '';
-            iconComissao.style.color = '';
-            iconComissao.innerHTML = `
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-            `;
-        }
+        const lblStatus = document.getElementById('statStatusDateLabel');
+        if (lblStatus) lblStatus.textContent = `Status Hoje (${ddStr})`;
 
-        const lblServicos = document.querySelector('#statServicos .stat-card-label');
-        if (lblServicos) lblServicos.textContent = `Serviços Agendados (${capitalizedMonth}):`;
+        const lblOcc = document.getElementById('statOccupancyTitle');
+        if (lblOcc) lblOcc.textContent = `Ocupação da Equipe (${professionals.length} Ativos)`;
 
-        const lblReceita = document.querySelector('#statReceita .stat-card-label');
-        if (lblReceita) lblReceita.textContent = `Receita Estimada (${capitalizedMonth}):`;
+        const lblReceita = document.getElementById('statReceitaLabel');
+        if (lblReceita) lblReceita.textContent = `Previsão Hoje / ${capitalizedMonth}`;
     }
 
     /** Professionals Page rendering (Active list + approvals) */
@@ -8098,19 +8502,30 @@ function closeAppointmentModal() {
 
         const isCompletedOrCancelled = apptObj.status === 'Concluído' || apptObj.status === 'Cancelado';
 
+        // Botão Gigante Sênior de Confirmação no WhatsApp (Print 1)
+        const waSeniorBtn = document.createElement('button');
+        waSeniorBtn.type = 'button';
+        waSeniorBtn.className = 'pop-btn-whatsapp-senior';
+        waSeniorBtn.innerHTML = '<span style="font-size:18px;">💬</span> ENVIAR CONFIRMAÇÃO NO WHATSAPP';
+        waSeniorBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openClientWhatsAppConfirmation(apptObj);
+        });
+        body.appendChild(waSeniorBtn);
+
         if (session.role === 'admin') {
             const isCancelled = apptObj.status === 'Cancelado';
             const isCompleted = apptObj.status === 'Concluído';
             actionPanel.innerHTML = `
-                <button class="btn btn-secondary pop-btn-edit" style="flex: 1; font-size: 13px; padding: 6px; border: 1px solid var(--gold-border); color: var(--gold-800); background: transparent; font-weight: 600; cursor: pointer;">EDITAR</button>
-                <button class="btn btn-secondary pop-btn-cancel" style="flex: 1; font-size: 13px; padding: 6px; border: 1px solid ${isCompleted ? '#FF9800' : '#EF5350'}; color: ${isCompleted ? '#FF9800' : '#EF5350'}; background: transparent; font-weight: 600; cursor: pointer;" ${isCancelled ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>${isCompleted ? 'DESFAZER' : 'CANCELAR'}</button>
-                <button class="btn btn-primary pop-btn-complete" style="flex: 1; font-size: 13px; padding: 6px; background: #4CAF50; border: none; color: #fff; font-weight: 600; cursor: pointer;" ${isCompletedOrCancelled ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>CONCLUIR</button>
+                <button class="btn btn-secondary pop-btn-edit" style="flex: 1; font-size: 12.5px; padding: 10px 8px; border-radius: 10px; border: 1.5px solid #DFD3BC; color: #5C491E; background: #FAF6EE; font-weight: 800; cursor: pointer;">✏️ EDITAR</button>
+                <button class="btn btn-secondary pop-btn-cancel" style="flex: 1; font-size: 12.5px; padding: 10px 8px; border-radius: 10px; border: 1.5px solid ${isCompleted ? '#FCD34D' : '#FECACA'}; color: ${isCompleted ? '#B45309' : '#DC2626'}; background: ${isCompleted ? '#FFFBEB' : '#FEF2F2'}; font-weight: 800; cursor: pointer;" ${isCancelled ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>${isCompleted ? '↩ DESFAZER' : '✕ CANCELAR'}</button>
+                <button class="btn btn-primary pop-btn-complete" style="flex: 1; font-size: 12.5px; padding: 10px 8px; border-radius: 10px; background: #0284C7; border: none; color: #fff; font-weight: 800; cursor: pointer; box-shadow: 0 4px 10px rgba(2,132,199,0.25);" ${isCompletedOrCancelled ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>✓ CONCLUIR</button>
             `;
         } else {
             // Employee view: can edit or cancel their own appointments
             actionPanel.innerHTML = `
-                <button class="btn btn-secondary pop-btn-edit" style="flex: 1; font-size: 13px; padding: 6px; border: 1px solid var(--gold-border); color: var(--gold-800); background: transparent; font-weight: 600; cursor: pointer;">EDITAR</button>
-                <button class="btn btn-secondary pop-btn-cancel" style="flex: 1; font-size: 13px; padding: 6px; border: 1px solid #EF5350; color: #EF5350; background: transparent; font-weight: 600; cursor: pointer;" ${isCompletedOrCancelled ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>CANCELAR</button>
+                <button class="btn btn-secondary pop-btn-edit" style="flex: 1; font-size: 12.5px; padding: 10px 8px; border-radius: 10px; border: 1.5px solid #DFD3BC; color: #5C491E; background: #FAF6EE; font-weight: 800; cursor: pointer;">✏️ EDITAR</button>
+                <button class="btn btn-secondary pop-btn-cancel" style="flex: 1; font-size: 12.5px; padding: 10px 8px; border-radius: 10px; border: 1.5px solid #FECACA; color: #DC2626; background: #FEF2F2; font-weight: 800; cursor: pointer;" ${isCompletedOrCancelled ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>✕ CANCELAR</button>
             `;
         }
 
@@ -8217,7 +8632,7 @@ function closeAppointmentModal() {
             const hasValidImage = p.avatar && String(p.avatar).startsWith('data:image/');
             const avatarHTML = hasValidImage
                 ? `<img src="${p.avatar}" alt="" class="professional-avatar-img">`
-                : `<div class="professional-avatar" style="background: ${p.color}; color: #fff; width: 36px; height: 36px; font-size: 15px; display: flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold;">${p.initials}</div>`;
+                : getIllustratedAvatarSVG(p.name, 36);
             
             return `
                 <li class="professional-item">
