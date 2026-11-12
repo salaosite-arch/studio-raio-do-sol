@@ -25,11 +25,19 @@ app.use('/api', (req, res, next) => {
     next();
 });
 
-// Servir arquivos estáticos com cache inteligente (economiza mais de 80% de tráfego)
+// Servir arquivos estáticos (sem cache em HTML/JS/CSS/SW para garantir atualizações instantâneas no celular)
 const FRONTEND_DIR = path.join(__dirname, '..');
 app.use(express.static(FRONTEND_DIR, {
-    maxAge: '1h',
-    etag: true
+    etag: true,
+    setHeaders: (res, filePath) => {
+        if (/\.(html|js|css|json)$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        } else {
+            res.setHeader('Cache-Control', 'public, max-age=3600');
+        }
+    }
 }));
 
 // Habilitar CORS e Parser de JSON com limite de tamanho para receber fotos em base64
@@ -604,6 +612,28 @@ app.post('/api/stock/sync', authenticateToken, async (req, res) => {
             )
         `);
         console.log(' [DB] Tabela gastos OK.');
+
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS notifications_log (
+                id            VARCHAR(80) PRIMARY KEY,
+                appt_id       VARCHAR(80),
+                action_type   VARCHAR(30) NOT NULL,
+                actor_id      VARCHAR(80),
+                actor_name    VARCHAR(120) NOT NULL,
+                actor_role    VARCHAR(30) NOT NULL,
+                prof_id       VARCHAR(80),
+                prof_name     VARCHAR(120),
+                prof2_id      VARCHAR(80),
+                prof2_name    VARCHAR(120),
+                client_name   VARCHAR(150),
+                service_name  VARCHAR(150),
+                appt_date     VARCHAR(20),
+                time_start    VARCHAR(20),
+                time_end      VARCHAR(20),
+                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log(' [DB] Tabela notifications_log OK.');
     } catch (err) {
         console.error(' [DB] Erro ao criar tabelas adicionais:', err.message);
     }
@@ -696,8 +726,71 @@ app.delete('/api/materials/:id', authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// ROTAS DE AGENDAMENTOS (APPOINTMENTS)
+// ROTAS DE AGENDAMENTOS (APPOINTMENTS) E NOTIFICAÇÕES
 // ==========================================
+
+async function logAppointmentNotification({ apptId, actionType, reqUser, apptData }) {
+    if (!actionType || !apptData) return;
+    try {
+        const notifId = 'ntf_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+        const actorName = (reqUser && reqUser.name) || apptData.createdBy || apptData.created_by || 'Sistema';
+        const actorRole = (reqUser && reqUser.role) || 'funcionario';
+        const actorId = (reqUser && reqUser.id) || '';
+
+        const profId = apptData.professionalId || apptData.professional_id || '';
+        const profName = apptData.professionalName || apptData.professional_name || '';
+        const prof2Id = apptData.professionalId2 || apptData.professional2_id || '';
+        const prof2Name = apptData.professionalName2 || apptData.professional2_name || '';
+        const clientName = apptData.client || 'Cliente';
+        const serviceName = apptData.serviceName || apptData.service_name || 'Procedimento';
+        const apptDate = apptData.date || '';
+        const timeStart = apptData.timeStart || apptData.time_start || '';
+        const timeEnd = apptData.timeEnd || apptData.time_end || '';
+
+        await db.query(
+            `INSERT INTO notifications_log (
+                id, appt_id, action_type, actor_id, actor_name, actor_role,
+                prof_id, prof_name, prof2_id, prof2_name,
+                client_name, service_name, appt_date, time_start, time_end
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+            [
+                notifId, String(apptId || ''), actionType, String(actorId), String(actorName), String(actorRole),
+                String(profId), String(profName), String(prof2Id), String(prof2Name),
+                String(clientName), String(serviceName), String(apptDate), String(timeStart), String(timeEnd)
+            ]
+        );
+    } catch (err) {
+        console.error('[NotificationsLog] Erro ao salvar notificação:', err.message);
+    }
+}
+
+app.get('/api/notifications', authenticateToken, async (req, res) => {
+    try {
+        const logsRes = await db.query('SELECT * FROM notifications_log ORDER BY created_at DESC LIMIT 80');
+        const mapped = logsRes.rows.map(r => ({
+            id: r.id,
+            apptId: r.appt_id,
+            actionType: r.action_type,
+            actorId: r.actor_id,
+            actorName: r.actor_name,
+            actorRole: r.actor_role,
+            professionalId: r.prof_id,
+            professionalName: r.prof_name,
+            professionalId2: r.prof2_id,
+            professionalName2: r.prof2_name,
+            client: r.client_name,
+            serviceName: r.service_name,
+            date: r.appt_date,
+            timeStart: r.time_start,
+            timeEnd: r.time_end,
+            createdAt: r.created_at
+        }));
+        res.json(mapped);
+    } catch (err) {
+        console.error('[GET /api/notifications] Erro:', err.message);
+        res.json([]);
+    }
+});
 
 app.get('/api/appointments', authenticateToken, async (req, res) => {
     try {
@@ -781,6 +874,14 @@ app.post('/api/appointments', authenticateToken, async (req, res) => {
             ]
         );
 
+        const actionType = (a.status === 'Bloqueado') ? 'bloqueou' : 'marcou';
+        await logAppointmentNotification({
+            apptId,
+            actionType,
+            reqUser: req.user,
+            apptData: { ...a, id: apptId }
+        });
+
         broadcastUpdate();
         autoBackup.mirrorCreateAppointment({ ...a, id: apptId });
         res.json({ success: true, id: apptId });
@@ -800,6 +901,9 @@ app.put('/api/appointments/:id', authenticateToken, async (req, res) => {
     }
 
     try {
+        const existingRes = await db.query('SELECT * FROM appointments WHERE id = $1', [id]);
+        const oldAppt = existingRes.rows[0] || {};
+
         // Build dynamic SET clause from provided fields
         const fieldMap = {
             professionalId: 'professional_id',
@@ -852,6 +956,38 @@ app.put('/api/appointments/:id', authenticateToken, async (req, res) => {
         const query = `UPDATE appointments SET ${setClauses.join(', ')} WHERE id = $${paramIdx}`;
         await db.query(query, values);
 
+        // Determine notification action type
+        let actionType = 'editou';
+        if (a.status === 'Cancelado' && oldAppt.status !== 'Cancelado') {
+            actionType = 'desmarcou';
+        } else if (a.status === 'Concluído' && oldAppt.status !== 'Concluído') {
+            actionType = 'concluiu';
+        } else if (a.status === 'Agendado' && oldAppt.status === 'Concluído') {
+            actionType = 'reabriu';
+        } else if (a.payoutInvoiced !== undefined && Object.keys(a).length <= 2) {
+            actionType = null;
+        }
+
+        if (actionType) {
+            const mergedData = {
+                professionalId: a.professionalId !== undefined ? a.professionalId : oldAppt.professional_id,
+                professionalName: a.professionalName !== undefined ? a.professionalName : oldAppt.professional_name,
+                professionalId2: a.professionalId2 !== undefined ? a.professionalId2 : oldAppt.professional2_id,
+                professionalName2: a.professionalName2 !== undefined ? a.professionalName2 : oldAppt.professional2_name,
+                client: a.client !== undefined ? a.client : oldAppt.client,
+                serviceName: a.serviceName !== undefined ? a.serviceName : oldAppt.service_name,
+                date: a.date !== undefined ? a.date : oldAppt.date,
+                timeStart: a.timeStart !== undefined ? a.timeStart : oldAppt.time_start,
+                timeEnd: a.timeEnd !== undefined ? a.timeEnd : oldAppt.time_end
+            };
+            await logAppointmentNotification({
+                apptId: id,
+                actionType,
+                reqUser: req.user,
+                apptData: mergedData
+            });
+        }
+
         broadcastUpdate();
         autoBackup.mirrorCreateAppointment({ ...a, id });
         res.json({ success: true, id });
@@ -866,10 +1002,23 @@ app.delete('/api/appointments/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
 
     try {
+        const existingRes = await db.query('SELECT * FROM appointments WHERE id = $1', [id]);
+        const oldAppt = existingRes.rows[0] || null;
+
         const result = await db.query('DELETE FROM appointments WHERE id = $1', [id]);
         
         if (result.rowCount === 0) {
             return res.status(404).json({ error: 'Agendamento não encontrado.' });
+        }
+
+        if (oldAppt) {
+            const actionType = (oldAppt.status === 'Bloqueado') ? 'desbloqueou' : 'desmarcou';
+            await logAppointmentNotification({
+                apptId: id,
+                actionType,
+                reqUser: req.user,
+                apptData: oldAppt
+            });
         }
 
         broadcastUpdate();

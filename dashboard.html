@@ -18,8 +18,11 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('Service Worker registrado:', reg.scope))
+                navigator.serviceWorker.register('sw.js?v=13')
+                    .then(reg => {
+                        console.log('Service Worker registrado:', reg.scope);
+                        if (reg.update) reg.update();
+                    })
                     .catch(err => console.error('Erro ao registrar Service Worker:', err));
             });
         }
@@ -38,7 +41,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Dashboard Styles -->
-    <link rel="stylesheet" href="dashboard.css?v=56">
+    <link rel="stylesheet" href="dashboard.css?v=57">
     
     <!-- Local file protocol blocker & guide overlay -->
     <script>
@@ -1572,6 +1575,6 @@
     </div><!-- /.dashboard-layout -->
 
     <script type="module" src="api-config.js?v=10"></script>
-    <script type="module" src="dashboard.js?v=56"></script>
+    <script type="module" src="dashboard.js?v=57"></script>
 </body>
 </html>

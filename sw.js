@@ -1,4 +1,4 @@
-const CACHE_NAME = 'raiodosol-cache-v12';
+const CACHE_NAME = 'raiodosol-cache-v13';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -58,23 +58,33 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Otherwise, use a Stale-While-Revalidate strategy for static resources
+  // Network-First strategy for all static files so mobile phones ALWAYS receive the latest code immediately
   event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
-      const fetchPromise = fetch(event.request).then(networkResponse => {
+    fetch(event.request)
+      .then(networkResponse => {
         if (networkResponse && networkResponse.status === 200) {
+          const cloned = networkResponse.clone();
           caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, networkResponse.clone());
+            cache.put(event.request, cloned);
           });
         }
         return networkResponse;
-      }).catch(err => {
-        console.log('[Service Worker] Fetch failed, returning cache if available', err);
-      });
-
-      return cachedResponse || fetchPromise;
-    })
+      })
+      .catch(() => {
+        return caches.match(event.request);
+      })
   );
+});
+
+// Message Event - Trigger native mobile status bar notification directly from Service Worker
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const title = event.data.title || '🔔 Studio Raio do Sol';
+    const options = event.data.options || {};
+    event.waitUntil(
+      self.registration.showNotification(title, options)
+    );
+  }
 });
 
 // Notification Click Event - Focus or open the dashboard when user taps phone notification bar

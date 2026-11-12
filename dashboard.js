@@ -5098,6 +5098,53 @@ function closeAppointmentModal() {
         return `raiosol_read_notifications_${userSuffix}`;
     }
 
+    /** Render a prominent banner on Agenda if mobile notification permission is not yet granted */
+    function renderMobileNotificationBanner() {
+        const existingBanner = document.getElementById('mobileNotifPermissionBanner');
+        if (!('Notification' in window) || Notification.permission === 'granted') {
+            if (existingBanner) existingBanner.remove();
+            return;
+        }
+        if (existingBanner) return;
+
+        const agendaPage = document.getElementById('page-agenda');
+        if (!agendaPage) return;
+
+        const banner = document.createElement('div');
+        banner.id = 'mobileNotifPermissionBanner';
+        banner.style.cssText = `
+            display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+            background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+            border: 1.5px solid #F59E0B; border-radius: 14px;
+            padding: 10px 16px; margin-bottom: 14px;
+            box-shadow: 0 4px 14px rgba(245, 158, 11, 0.15);
+        `;
+        banner.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px;min-width:220px;flex:1;">
+                <span style="font-size:22px;line-height:1;">📲</span>
+                <div>
+                    <div style="font-size:13px;font-weight:800;color:#92400E;">Ative os Alertas na Barra do Celular + Vibração</div>
+                    <div style="font-size:11.5px;font-weight:600;color:#B45309;">Receba notificação no topo do celular sempre que marcarem ou desmarcarem horários.</div>
+                </div>
+            </div>
+            <button type="button" id="btnActivateMobileNotifBanner" style="
+                padding: 8px 16px; border-radius: 999px; border: none;
+                background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+                color: #FFFFFF; font-size: 12px; font-weight: 800; cursor: pointer;
+                box-shadow: 0 3px 10px rgba(180, 83, 9, 0.3); white-space: nowrap;
+            ">🔔 ATIVAR NO CELULAR</button>
+        `;
+
+        agendaPage.insertBefore(banner, agendaPage.firstChild);
+        const btn = banner.querySelector('#btnActivateMobileNotifBanner');
+        if (btn) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                requestMobileNotificationPermission(true);
+            });
+        }
+    }
+
     /** Request browser/PWA Notification permission on mobile & desktop */
     async function requestMobileNotificationPermission(showFeedback = false) {
         if (!('Notification' in window)) {
@@ -5105,23 +5152,35 @@ function closeAppointmentModal() {
             return false;
         }
         if (Notification.permission === 'granted') {
+            renderMobileNotificationBanner();
             if (showFeedback) {
-                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-                showToast('Alertas e vibração no celular já estão ativos! 🔔', 'success');
+                playNotificationSound();
+                triggerPhoneNotification(
+                    '🔔 Studio Raio do Sol • Teste de Alerta',
+                    'As notificações na barra do seu celular e a vibração estão funcionando perfeitamente!',
+                    { id: 'test_' + Date.now() }
+                );
+                showToast('Notificação enviada para a barra do seu celular! 📲🔔', 'success');
             }
             return true;
         }
         try {
             const permission = await Notification.requestPermission();
+            renderMobileNotificationBanner();
             if (permission === 'granted') {
-                if (navigator.vibrate) navigator.vibrate([250, 120, 250]);
+                playNotificationSound();
+                triggerPhoneNotification(
+                    '🔔 Alertas Ativados no Celular!',
+                    'Você receberá notificações com vibração sempre que marcarem ou desmarcarem horários.',
+                    { id: 'welcome_' + Date.now() }
+                );
                 if (showFeedback) {
                     showToast('Notificações na barra do celular ativadas com sucesso! 📲🔔', 'success');
                 }
                 if (notifDropdown) renderNotifications(notifDropdown);
                 return true;
             } else if (showFeedback) {
-                showToast('Permissão de notificação negada nas configurações do navegador.', 'warning');
+                showToast('Permissão negada. Clique no cadeado ao lado do endereço do site e permita Notificações.', 'warning', 7000);
             }
         } catch (err) {
             console.warn('[Notifications] Erro ao solicitar permissão:', err);
@@ -5129,23 +5188,12 @@ function closeAppointmentModal() {
         return false;
     }
 
-    // Automatically request notification permission on first user touch/click if still 'default'
-    const autoAskNotifOnce = () => {
-        if ('Notification' in window && Notification.permission === 'default') {
-            requestMobileNotificationPermission(false);
-        }
-        document.removeEventListener('click', autoAskNotifOnce);
-        document.removeEventListener('touchstart', autoAskNotifOnce);
-    };
-    document.addEventListener('click', autoAskNotifOnce, { once: true });
-    document.addEventListener('touchstart', autoAskNotifOnce, { once: true });
-
     /** Trigger native mobile notification bar + vibration + sound */
     function triggerPhoneNotification(title, body, appt) {
         // 1. Vibrate phone (Android Chrome / PWA)
         try {
             if ('vibrate' in navigator) {
-                navigator.vibrate([250, 120, 250, 120, 400]);
+                navigator.vibrate([300, 120, 300, 120, 450]);
             }
         } catch (e) {
             console.warn('[Vibrate] Não suportado:', e);
@@ -5158,8 +5206,8 @@ function closeAppointmentModal() {
             body: body,
             icon: '/assets/logo.png',
             badge: '/assets/logo.png',
-            vibrate: [250, 120, 250, 120, 400],
-            tag: `raiosol-appt-${appt ? appt.id : Date.now()}`,
+            vibrate: [300, 120, 300, 120, 450],
+            tag: `raiosol-notif-${appt && appt.id ? appt.id : Date.now()}`,
             renotify: true,
             requireInteraction: false,
             data: {
@@ -5174,6 +5222,14 @@ function closeAppointmentModal() {
                     if (reg && typeof reg.showNotification === 'function') {
                         return reg.showNotification(title, notifOptions);
                     }
+                    if (navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'SHOW_NOTIFICATION',
+                            title,
+                            options: notifOptions
+                        });
+                        return;
+                    }
                     new Notification(title, notifOptions);
                 })
                 .catch(() => {
@@ -5184,133 +5240,199 @@ function closeAppointmentModal() {
         }
     }
 
-    /** Rebuild notifications dynamically with targeted routing:
-     *  - Deise (Proprietária / admin): receives notifications whenever ANY employee schedules an appointment.
-     *  - Employee (funcionario): receives notifications whenever Deise (or another user) schedules an appointment FOR THAT SPECIFIC EMPLOYEE.
+    let _isRebuildingNotifs = false;
+
+    /** Rebuild notifications dynamically from server notifications_log (marcou, desmarcou, editou, concluiu, bloqueou)
+     *  - Deise (Proprietária / admin): receives notifications for ALL actions (marcou, desmarcou, editou, etc.).
+     *  - Employee (funcionario): receives notifications whenever an action (marcou, desmarcou, editou) is on THAT SPECIFIC EMPLOYEE'S schedule.
      */
-    function rebuildNotifications() {
-        const currentSession = JSON.parse(sessionStorage.getItem('raiosol_session') || '{}');
-        if (!currentSession || !currentSession.name) return;
+    async function rebuildNotifications() {
+        if (_isRebuildingNotifs) return;
+        _isRebuildingNotifs = true;
+        try {
+            renderMobileNotificationBanner();
 
-        const sessionNameClean = currentSession.name.trim().toLowerCase();
-        const isAdminDeise = currentSession.role === 'admin' || sessionNameClean.includes('deise');
+            const currentSession = JSON.parse(sessionStorage.getItem('raiosol_session') || '{}');
+            if (!currentSession || !currentSession.name) return;
 
-        // Find current employee's professional object (when logged in as employee)
-        const myProf = !isAdminDeise
-            ? professionals.find(p =>
-                String(p.id) === String(currentSession.id) ||
-                (p.name && p.name.trim().toLowerCase() === sessionNameClean)
-              )
-            : null;
+            const sessionNameClean = currentSession.name.trim().toLowerCase();
+            const isAdminDeise = currentSession.role === 'admin' || sessionNameClean.includes('deise');
 
-        let filteredAppts = [];
-        if (isAdminDeise) {
-            // Deise (Proprietária / Admin): always notified when any employee books an appointment
-            filteredAppts = appointments.filter(a => {
-                if (!a || a.status === 'Cancelado' || a.status === 'Bloqueado') return false;
-                if (!a.createdBy || a.createdBy.trim() === '') return false;
-                const creatorClean = a.createdBy.trim().toLowerCase();
-                return creatorClean !== sessionNameClean && !creatorClean.includes('deise');
-            });
-        } else {
-            // Funcionário (ex: Adriana, Nazaré, Francine): notified ONLY when Deise (or someone else) books for THIS employee
-            filteredAppts = appointments.filter(a => {
-                if (!a || a.status === 'Cancelado' || a.status === 'Bloqueado') return false;
-                const creatorClean = (a.createdBy || '').trim().toLowerCase();
-                // Do not notify the employee of appointments they created themselves
-                if (creatorClean === sessionNameClean) return false;
+            const myProf = !isAdminDeise
+                ? professionals.find(p =>
+                    String(p.id) === String(currentSession.id) ||
+                    (p.name && p.name.trim().toLowerCase() === sessionNameClean)
+                  )
+                : null;
 
+            // Fetch real activity log from backend (/api/notifications)
+            let serverLogs = [];
+            try {
+                serverLogs = await apiRequest('/notifications');
+                if (!Array.isArray(serverLogs)) serverLogs = [];
+            } catch (e) {
+                serverLogs = [];
+            }
+
+            // Fallback: if notifications_log table is still empty, synthesize from appointments
+            if (serverLogs.length === 0 && appointments.length > 0) {
+                serverLogs = appointments
+                    .filter(a => a && a.createdBy)
+                    .map(a => ({
+                        id: `legacy_${a.id}_${a.status || 'Agendado'}`,
+                        apptId: a.id,
+                        actionType: a.status === 'Cancelado' ? 'desmarcou' : (a.status === 'Bloqueado' ? 'bloqueou' : 'marcou'),
+                        actorName: a.createdBy || 'Recepção',
+                        actorRole: (a.createdBy || '').toLowerCase().includes('deise') ? 'admin' : 'funcionario',
+                        professionalId: a.professionalId,
+                        professionalName: a.professionalName,
+                        professionalId2: a.professionalId2,
+                        professionalName2: a.professionalName2,
+                        client: a.client,
+                        serviceName: a.serviceName,
+                        date: a.date,
+                        timeStart: a.timeStart,
+                        timeEnd: a.timeEnd,
+                        createdAt: a.createdAt
+                    }));
+            }
+
+            // Filter events according to role:
+            // - Deise (Admin): sees ALL schedule events (marcou, desmarcou, editou, concluiu, bloqueou)
+            // - Employee (Adriana, Nazaré, etc.): sees ONLY events belonging to HER schedule
+            const filteredLogs = serverLogs.filter(ev => {
+                if (!ev) return false;
+                if (isAdminDeise) {
+                    return true;
+                }
                 const matchesProfId = myProf && (
-                    String(a.professionalId) === String(myProf.id) ||
-                    (a.isMutual && String(a.professionalId2) === String(myProf.id))
+                    String(ev.professionalId) === String(myProf.id) ||
+                    (ev.professionalId2 && String(ev.professionalId2) === String(myProf.id))
                 );
                 const matchesProfName =
-                    (a.professionalName && a.professionalName.trim().toLowerCase() === sessionNameClean) ||
-                    (a.isMutual && a.professionalName2 && a.professionalName2.trim().toLowerCase() === sessionNameClean);
+                    (ev.professionalName && ev.professionalName.trim().toLowerCase() === sessionNameClean) ||
+                    (ev.professionalName2 && ev.professionalName2.trim().toLowerCase() === sessionNameClean);
 
                 return Boolean(matchesProfId || matchesProfName);
             });
-        }
 
-        // Sort by creation date descending
-        filteredAppts.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+            // Sort newest first
+            filteredLogs.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
-        const storageKey = getReadNotificationsKey();
-        const readNotifIds = JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem('raiosol_read_notifications') || '[]');
+            const storageKey = getReadNotificationsKey();
+            const readNotifIds = JSON.parse(localStorage.getItem(storageKey) || localStorage.getItem('raiosol_read_notifications') || '[]');
 
-        // Track new dynamic notification alerts
-        const currentUnreadIds = filteredAppts
-            .filter(a => !readNotifIds.includes(String(a.id)))
-            .map(a => String(a.id));
+            const formatEventText = (ev) => {
+                const dateStr = formatStringDateBR(ev.date);
+                const targetProf = professionals.find(p => String(p.id) === String(ev.professionalId));
+                const profLabel = targetProf ? targetProf.name : (ev.professionalName || 'Profissional');
+                const actorLabel = ev.actorName || 'Sistema';
+                const act = (ev.actionType || 'marcou').toLowerCase();
 
-        if (knownNotifIds === null) {
-            // First load: initialize known list
-            knownNotifIds = [...currentUnreadIds];
-        } else {
-            // Subsequent loads: check for brand new unread notifications
-            const newUnreadIds = currentUnreadIds.filter(id => !knownNotifIds.includes(id));
-            if (newUnreadIds.length > 0) {
-                newUnreadIds.forEach(id => {
-                    const appt = filteredAppts.find(a => String(a.id) === id);
-                    if (appt) {
-                        const dateStr = formatStringDateBR(appt.date);
-                        const targetProf = professionals.find(p => String(p.id) === String(appt.professionalId));
-                        const profLabel = targetProf ? targetProf.name : (appt.professionalName || '');
-                        const creatorLabel = appt.createdBy || 'Adm. Deise Rose';
+                let badgeIcon = '🔔';
+                let verb = 'MARCOU';
+                let badgeBg = '#FEF3C7';
+                let badgeColor = '#92400E';
 
-                        const notifTitle = isAdminDeise
-                            ? `🔔 Novo Agendamento • ${creatorLabel}`
-                            : `🔔 Novo Horário para Você!`;
+                if (act === 'desmarcou') {
+                    badgeIcon = '⚠️';
+                    verb = 'DESMARCOU';
+                    badgeBg = '#FEE2E2';
+                    badgeColor = '#DC2626';
+                } else if (act === 'editou') {
+                    badgeIcon = '✏️';
+                    verb = 'ALTEROU';
+                    badgeBg = '#E0F2FE';
+                    badgeColor = '#0369A1';
+                } else if (act === 'concluiu') {
+                    badgeIcon = '✅';
+                    verb = 'CONCLUIU';
+                    badgeBg = '#D1FAE5';
+                    badgeColor = '#047857';
+                } else if (act === 'bloqueou') {
+                    badgeIcon = '🔒';
+                    verb = 'BLOQUEOU AGENDA';
+                    badgeBg = '#E5E7EB';
+                    badgeColor = '#374151';
+                } else if (act === 'desbloqueou') {
+                    badgeIcon = '🔓';
+                    verb = 'LIBEROU AGENDA';
+                    badgeBg = '#ECFDF5';
+                    badgeColor = '#059669';
+                }
 
-                        const notifBody = isAdminDeise
-                            ? `${creatorLabel} agendou ${appt.client} (${appt.serviceName})${profLabel ? ' com ' + profLabel : ''} em ${dateStr} às ${appt.timeStart}`
-                            : `${creatorLabel} agendou ${appt.client} para ${appt.serviceName} em ${dateStr} às ${appt.timeStart}`;
+                const title = isAdminDeise
+                    ? `${badgeIcon} ${actorLabel} ${verb}`
+                    : `${badgeIcon} Horário ${verb} para Você!`;
 
-                        showToast(notifBody, 'info', 7000);
-                        triggerPhoneNotification(notifTitle, notifBody, appt);
-                    }
-                });
-                playNotificationSound();
-                knownNotifIds = [...currentUnreadIds];
-            }
-        }
+                const body = (act === 'bloqueou' || act === 'desbloqueou')
+                    ? `${actorLabel} ${verb.toLowerCase()} de ${profLabel} em ${dateStr} (${ev.timeStart} - ${ev.timeEnd}) • ${ev.serviceName}`
+                    : (isAdminDeise
+                        ? `${actorLabel} ${verb.toLowerCase()}: ${ev.client} • ${ev.serviceName} (Prof. ${profLabel}) em ${dateStr} às ${ev.timeStart}`
+                        : `${actorLabel} ${verb.toLowerCase()} na sua agenda: ${ev.client} • ${ev.serviceName} em ${dateStr} às ${ev.timeStart}`);
 
-        notifData = filteredAppts.map(appt => {
-            const dateStr = formatStringDateBR(appt.date);
-            const targetProf = professionals.find(p => String(p.id) === String(appt.professionalId));
-            const profLabel = targetProf ? targetProf.name : (appt.professionalName || '');
-            const creatorLabel = appt.createdBy || 'Adm. Deise Rose';
-
-            const msg = isAdminDeise
-                ? `${creatorLabel} agendou ${appt.client} para ${appt.serviceName}${profLabel ? ' (Prof. ' + profLabel + ')' : ''} em ${dateStr} às ${appt.timeStart}`
-                : `${creatorLabel} agendou para você: ${appt.client} • ${appt.serviceName} em ${dateStr} às ${appt.timeStart}`;
-
-            const timeLabel = appt.createdAt 
-                ? `${timeAgo(appt.createdAt)} (${formatDateTimeBR(appt.createdAt)})`
-                : 'agora mesmo';
-
-            return {
-                id: appt.id,
-                createdBy: creatorLabel,
-                targetProfName: profLabel,
-                isForEmployee: !isAdminDeise,
-                client: appt.client || 'Cliente',
-                serviceName: appt.serviceName || 'Procedimento',
-                dateBR: dateStr,
-                timeStart: appt.timeStart || '',
-                message: msg,
-                time: timeLabel,
-                read: readNotifIds.includes(String(appt.id))
+                return { title, body, badgeIcon, verb, badgeBg, badgeColor, dateStr, profLabel, actorLabel, act };
             };
-        });
 
-        updateNotificationBadge();
+            const currentUnreadIds = filteredLogs
+                .filter(ev => !readNotifIds.includes(String(ev.id)))
+                .map(ev => String(ev.id));
 
-        if (notifDropdown) {
-            renderNotifications(notifDropdown);
+            if (knownNotifIds === null) {
+                knownNotifIds = [...currentUnreadIds];
+            } else {
+                const newUnreadIds = currentUnreadIds.filter(id => !knownNotifIds.includes(id));
+                if (newUnreadIds.length > 0) {
+                    newUnreadIds.forEach(id => {
+                        const ev = filteredLogs.find(x => String(x.id) === id);
+                        if (ev) {
+                            const info = formatEventText(ev);
+                            showToast(`${info.badgeIcon} ${info.body}`, info.act === 'desmarcou' ? 'warning' : 'info', 7500);
+                            triggerPhoneNotification(info.title, info.body, ev);
+                        }
+                    });
+                    playNotificationSound();
+                    knownNotifIds = [...currentUnreadIds];
+                }
+            }
+
+            notifData = filteredLogs.map(ev => {
+                const info = formatEventText(ev);
+                const timeLabel = ev.createdAt
+                    ? `${timeAgo(ev.createdAt)} (${formatDateTimeBR(ev.createdAt)})`
+                    : 'agora mesmo';
+
+                return {
+                    id: ev.id,
+                    apptId: ev.apptId,
+                    actionType: info.act,
+                    verb: info.verb,
+                    badgeIcon: info.badgeIcon,
+                    badgeBg: info.badgeBg,
+                    badgeColor: info.badgeColor,
+                    createdBy: info.actorLabel,
+                    targetProfName: info.profLabel,
+                    isForEmployee: !isAdminDeise,
+                    client: ev.client || 'Cliente',
+                    serviceName: ev.serviceName || 'Procedimento',
+                    dateBR: info.dateStr,
+                    timeStart: ev.timeStart || '',
+                    message: info.body,
+                    time: timeLabel,
+                    read: readNotifIds.includes(String(ev.id))
+                };
+            });
+
+            updateNotificationBadge();
+
+            if (notifDropdown) {
+                renderNotifications(notifDropdown);
+            }
+
+            renderSidebarNotifications();
+        } finally {
+            _isRebuildingNotifs = false;
         }
-
-        renderSidebarNotifications();
     }
 
     /** Mark a notification as read and save to localStorage */
@@ -5358,7 +5480,7 @@ function closeAppointmentModal() {
                 <li class="notification-item ${n.read ? 'notif-read' : 'notif-unread'}" data-notif-id="${n.id}" style="padding: 12px; border-bottom: 1px solid var(--neutral-100); display: flex; align-items: start; gap: 10px; cursor: pointer; transition: background 0.2s; border-radius: 6px; margin-bottom: 4px;">
                     <div class="notif-dot ${n.read ? '' : 'dot-active'}" style="width: 8px; height: 8px; border-radius: 50%; background: ${n.read ? 'transparent' : '#C9A84C'}; margin-top: 5px; flex-shrink: 0;"></div>
                     <div style="flex: 1;">
-                        <p style="margin: 0; font-size: 0.9375rem; line-height: 1.4; color: var(--neutral-800);">${n.message}</p>
+                        <p style="margin: 0; font-size: 0.9375rem; line-height: 1.4; color: var(--neutral-800);">${n.badgeIcon || '🔔'} ${n.message}</p>
                         <span style="font-size: 0.875rem; color: var(--neutral-400); display: block; margin-top: 4px;">${n.time}</span>
                     </div>
                 </li>
@@ -5399,18 +5521,21 @@ function closeAppointmentModal() {
         const canAskPerm = ('Notification' in window) && Notification.permission !== 'granted';
 
         container.innerHTML = `
-            <div class="notif-header" style="padding:14px 16px;background:linear-gradient(135deg,#FAF6EE,#FFFDF9);border-bottom:1px solid #EDE3CE;">
+            <div class="notif-header" style="padding:14px 16px;background:linear-gradient(135deg,#FAF6EE,#FFFDF9);border-bottom:1px solid #EDE3CE;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
                 <div style="display:flex;align-items:center;gap:8px;">
                     <span style="font-size:16px;">🔔</span>
                     <span class="notif-title" style="font-size:15px;">Notificações</span>
                     ${unreadCount > 0 ? `<span class="notif-badge-count" style="background:#EF4444;color:#fff;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;">${unreadCount} nova${unreadCount > 1 ? 's' : ''}</span>` : ''}
                 </div>
-                ${unreadCount > 0 ? `<button type="button" class="btn-mark-all-notif" style="background:none;border:none;color:#9A731F;font-size:11.5px;font-weight:800;cursor:pointer;text-decoration:underline;">Marcar lidas</button>` : ''}
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <button type="button" class="btn-test-mobile-notif" style="padding:3px 9px;border-radius:999px;border:1px solid #C9A84C;background:#FFFBEB;color:#92400E;font-size:10.5px;font-weight:800;cursor:pointer;">📲 Testar no Celular</button>
+                    ${unreadCount > 0 ? `<button type="button" class="btn-mark-all-notif" style="background:none;border:none;color:#9A731F;font-size:11.5px;font-weight:800;cursor:pointer;text-decoration:underline;">Marcar lidas</button>` : ''}
+                </div>
             </div>
             ${canAskPerm ? `
             <div style="padding:8px 12px;background:#FFFBEB;border-bottom:1px solid #FDE68A;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <span style="font-size:11.5px;font-weight:700;color:#92400E;">📲 Receber alertas na barra do celular + vibração</span>
-                <button type="button" class="btn-enable-mobile-notif" style="padding:4px 10px;border-radius:999px;border:none;background:#C9A84C;color:#fff;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;">Ativar</button>
+                <span style="font-size:11.5px;font-weight:700;color:#92400E;">📲 Ative os alertas na barra do celular + vibração</span>
+                <button type="button" class="btn-enable-mobile-notif" style="padding:4px 10px;border-radius:999px;border:none;background:#C9A84C;color:#fff;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;">Ativar Agora</button>
             </div>
             ` : ''}
             <div class="notif-list" style="max-height:390px;padding:4px 0;">
@@ -5420,16 +5545,19 @@ function closeAppointmentModal() {
                     const avHTML = (creatorProf && creatorProf.avatar && String(creatorProf.avatar).startsWith('data:image/'))
                         ? `<img src="${creatorProf.avatar}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1.5px solid #C9A84C;flex-shrink:0;">`
                         : getIllustratedAvatarSVG(n.createdBy || 'Studio', 36);
-                    const actionText = n.isForEmployee
-                        ? `agendou para <strong>você</strong> • Cliente: <strong>${n.client}</strong>`
-                        : `agendou <strong>${n.client}</strong>${n.targetProfName ? ` (Prof. <strong>${n.targetProfName}</strong>)` : ''}`;
                     return `
                     <div class="notif-item notif-card-v4 ${n.read ? 'notif-read' : 'notif-unread'}" data-notif-id="${n.id}">
                         ${avHTML}
-                        <div class="notif-content" style="min-width:0;">
+                        <div class="notif-content" style="min-width:0;width:100%;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;margin-bottom:3px;">
+                                <span style="background:${n.badgeBg || '#FEF3C7'};color:${n.badgeColor || '#92400E'};padding:1.5px 7px;border-radius:999px;font-weight:800;font-size:10px;letter-spacing:0.4px;">
+                                    ${n.badgeIcon || '🔔'} ${n.verb || 'MARCOU'}
+                                </span>
+                                <span style="font-size:10.5px;font-weight:700;color:#6E6252;">Prof. ${n.targetProfName || ''}</span>
+                            </div>
                             <p class="notif-message" style="font-size:12.5px;line-height:1.4;color:#1F1A14;margin:0 0 4px;">
-                                <strong>${n.createdBy}</strong> ${actionText} para
-                                <span style="background:#FEF3C7;color:#92400E;padding:1px 6px;border-radius:4px;font-weight:700;font-size:11.5px;">${n.serviceName}</span>
+                                <strong>${n.createdBy}</strong>: Cliente <strong>${n.client}</strong> •
+                                <span style="background:#FAF3E0;color:#8A6518;padding:1px 6px;border-radius:4px;font-weight:700;font-size:11.5px;">${n.serviceName}</span>
                             </p>
                             <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap;">
                                 <span style="font-size:11px;font-weight:700;color:#059669;">📅 ${n.dateBR} às ${n.timeStart}</span>
@@ -5441,6 +5569,14 @@ function closeAppointmentModal() {
                 }).join('')}
             </div>
         `;
+
+        const testMobileBtn = container.querySelector('.btn-test-mobile-notif');
+        if (testMobileBtn) {
+            testMobileBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                requestMobileNotificationPermission(true);
+            });
+        }
 
         const enableMobileBtn = container.querySelector('.btn-enable-mobile-notif');
         if (enableMobileBtn) {
@@ -11052,6 +11188,23 @@ function closeAppointmentModal() {
         eventSource.onerror = (error) => {
             console.warn('[SSE] Erro ou desconexão no canal de tempo real. Reconectando automaticamente...', error);
         };
+
+        // Fallback de polling rápido (7s) + wakeup ao desbloquear a tela do celular
+        setInterval(() => {
+            if (!document.hidden) {
+                rebuildNotifications();
+            }
+        }, 7000);
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                refreshActivePageData();
+            }
+        });
+
+        window.addEventListener('focus', () => {
+            rebuildNotifications();
+        });
     }
 
     // ============================================================
