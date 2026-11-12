@@ -15,7 +15,7 @@
     
     <script>
         (function() {
-            const APP_VERSION = 'v58';
+            const APP_VERSION = 'v59';
             let reloading = false;
             const triggerSafeReload = () => {
                 if (reloading) return;
@@ -32,7 +32,7 @@
                 });
 
                 window.addEventListener('load', () => {
-                    navigator.serviceWorker.register('sw.js?v=14', { updateViaCache: 'none' })
+                    navigator.serviceWorker.register('sw.js?v=15', { updateViaCache: 'none' })
                         .then(reg => {
                             if (reg.update) reg.update();
                             if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });

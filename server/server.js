@@ -93,7 +93,108 @@ app.get('/api/health', (req, res) => {
 });
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: 'v58', swVersion: 'raiodosol-cache-v14', timestamp: Date.now() });
+    res.json({ version: 'v59', swVersion: 'raiodosol-cache-v15', timestamp: Date.now() });
+});
+
+// ==========================================
+// AVISO DE ATUALIZAÇÃO DA AGENDA + PESQUISA DE SUGESTÃO / RECLAMAÇÃO
+// ==========================================
+let _feedbackTableEnsured = false;
+async function ensureUpdateFeedbackTable() {
+    if (_feedbackTableEnsured) return;
+    try {
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS update_feedback (
+                id            VARCHAR(80) PRIMARY KEY,
+                campaign_id   VARCHAR(50) NOT NULL DEFAULT 'agenda_v2_2026_11',
+                user_id       VARCHAR(80),
+                user_name     VARCHAR(150) NOT NULL,
+                user_role     VARCHAR(40),
+                decision      VARCHAR(40) NOT NULL,
+                category      VARCHAR(50),
+                comment       TEXT,
+                device_info   TEXT,
+                created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        _feedbackTableEnsured = true;
+    } catch (e) {
+        console.error('[UpdateFeedback] Erro ao criar tabela update_feedback:', e.message);
+    }
+}
+
+// Verificar se o usuário logado já respondeu/interagiu com o aviso
+app.get('/api/update-feedback/status', authenticateToken, async (req, res) => {
+    const campaignId = req.query.campaignId || 'agenda_v2_2026_11';
+    try {
+        await ensureUpdateFeedbackTable();
+        const userId = String(req.user.id || '');
+        const userName = String(req.user.name || '').trim();
+        const checkRes = await db.query(
+            `SELECT * FROM update_feedback
+             WHERE campaign_id = $1
+               AND (user_id = $2 OR LOWER(TRIM(user_name)) = LOWER($3))
+             ORDER BY created_at DESC LIMIT 1`,
+            [campaignId, userId, userName]
+        );
+        res.json({
+            responded: checkRes.rows.length > 0,
+            record: checkRes.rows[0] || null
+        });
+    } catch (e) {
+        console.error('[GET /api/update-feedback/status] Erro:', e.message);
+        res.json({ responded: false, record: null });
+    }
+});
+
+// Registrar decisão do usuário (comentou sugestão/reclamação OU prosseguiu sem comentar)
+app.post('/api/update-feedback', authenticateToken, async (req, res) => {
+    const { campaignId, decision, category, comment, deviceInfo } = req.body || {};
+    try {
+        await ensureUpdateFeedbackTable();
+        const fbId = 'fb_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+        const userId = String((req.user && req.user.id) || '');
+        const userName = String((req.user && req.user.name) || req.body.userName || 'Usuário').trim();
+        const userRole = String((req.user && req.user.role) || req.body.userRole || 'funcionario');
+        const cleanComment = String(comment || '').trim();
+        const finalDecision = decision || (cleanComment ? 'comentou' : 'prosseguiu_sem_comentar');
+        const finalCategory = category || (cleanComment ? 'comentario' : 'nenhum');
+
+        await db.query(
+            `INSERT INTO update_feedback (
+                id, campaign_id, user_id, user_name, user_role,
+                decision, category, comment, device_info
+            ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+            [
+                fbId,
+                campaignId || 'agenda_v2_2026_11',
+                userId,
+                userName,
+                userRole,
+                finalDecision,
+                finalCategory,
+                cleanComment,
+                String(deviceInfo || req.headers['user-agent'] || '')
+            ]
+        );
+
+        res.json({ success: true, id: fbId });
+    } catch (e) {
+        console.error('[POST /api/update-feedback] Erro:', e.message);
+        res.status(500).json({ error: 'Erro ao registrar interação: ' + e.message });
+    }
+});
+
+// Listar todas as interações e comentários capturados
+app.get('/api/update-feedback/all', authenticateToken, async (req, res) => {
+    try {
+        await ensureUpdateFeedbackTable();
+        const result = await db.query('SELECT * FROM update_feedback ORDER BY created_at DESC');
+        res.json(result.rows);
+    } catch (e) {
+        console.error('[GET /api/update-feedback/all] Erro:', e.message);
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // Rota de Inscrição em Eventos de Tempo Real (Sem autenticação direta no SSE pois o payload não contém dados sensíveis)

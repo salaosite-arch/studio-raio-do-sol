@@ -10215,6 +10215,11 @@ function closeAppointmentModal() {
                 preloader.classList.add('fade-out');
                 setTimeout(() => preloader.remove(), 600);
             }
+
+            // Exibir aviso de Agenda Atualizada + Pesquisa de Sugestão/Reclamação (1 vez por pessoa até decidir)
+            setTimeout(() => {
+                checkAndShowUpdateFeedbackModal();
+            }, 800);
             
         } catch (error) {
             console.error('Erro durante o carregamento do banco de dados:', error);
@@ -11248,6 +11253,311 @@ function closeAppointmentModal() {
         window.addEventListener('focus', () => {
             refreshActivePageData(false);
         });
+    }
+
+    // ============================================================
+    // AVISO DE AGENDA ATUALIZADA + PESQUISA DE SUGESTÃO / RECLAMAÇÃO
+    // Pergunta 1 única vez por pessoa até ela decidir comentar ou prosseguir sem comentar
+    // ============================================================
+    const UPDATE_FEEDBACK_CAMPAIGN = 'agenda_v2_2026_11';
+
+    async function checkAndShowUpdateFeedbackModal() {
+        try {
+            const currentSession = JSON.parse(sessionStorage.getItem('raiosol_session') || '{}');
+            if (!currentSession || !currentSession.name) return;
+
+            const userKey = String(currentSession.id || currentSession.name).trim().toLowerCase().replace(/\s+/g, '_');
+            const localFlagKey = `raiosol_fb_done_${UPDATE_FEEDBACK_CAMPAIGN}_${userKey}`;
+
+            // Se já decidiu neste navegador, não pergunta novamente
+            if (localStorage.getItem(localFlagKey) === 'true') {
+                return;
+            }
+
+            // Consulta no banco de dados se esta pessoa já respondeu (em outro aparelho ou aba)
+            try {
+                const statusRes = await apiRequest(`/update-feedback/status?campaignId=${encodeURIComponent(UPDATE_FEEDBACK_CAMPAIGN)}`);
+                if (statusRes && statusRes.responded) {
+                    localStorage.setItem(localFlagKey, 'true');
+                    return;
+                }
+            } catch (e) {
+                console.warn('[UpdateFeedback] Não foi possível consultar status prévio, exibindo modal:', e.message);
+            }
+
+            if (document.getElementById('updateFeedbackModalOverlay')) return;
+
+            const overlay = document.createElement('div');
+            overlay.id = 'updateFeedbackModalOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                inset: 0;
+                z-index: 99998;
+                background: rgba(17, 24, 39, 0.72);
+                backdrop-filter: blur(8px);
+                -webkit-backdrop-filter: blur(8px);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+                overflow-y: auto;
+                animation: fadeIn 0.25s ease;
+            `;
+
+            const firstName = String(currentSession.name || '').trim().split(/\s+/)[0] || 'Profissional';
+
+            overlay.innerHTML = `
+                <div style="
+                    background: linear-gradient(180deg, #FFFDF9 0%, #FDF8EE 100%);
+                    border: 2px solid #D8C28B;
+                    border-radius: 22px;
+                    max-width: 500px;
+                    width: 100%;
+                    padding: 26px 24px 22px;
+                    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35), 0 4px 16px rgba(184, 138, 42, 0.18);
+                    font-family: 'Inter', sans-serif;
+                    color: #1F2937;
+                    position: relative;
+                    max-height: 92vh;
+                    overflow-y: auto;
+                ">
+                    <!-- Badge Topo -->
+                    <div style="display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
+                        <span style="
+                            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+                            color: #92400E;
+                            border: 1px solid #F59E0B;
+                            font-size: 11px;
+                            font-weight: 800;
+                            letter-spacing: 0.9px;
+                            padding: 5px 14px;
+                            border-radius: 999px;
+                            text-transform: uppercase;
+                            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.15);
+                        ">✨ Agenda 2.0 Atualizada</span>
+                    </div>
+
+                    <!-- Título e Saudação -->
+                    <h2 style="
+                        font-family: 'Playfair Display', serif;
+                        font-size: 22px;
+                        font-weight: 700;
+                        color: #1C1917;
+                        text-align: center;
+                        margin: 0 0 8px;
+                    ">Olá, ${firstName}! A Agenda foi Atualizada 🎉</h2>
+
+                    <p style="
+                        font-size: 13.5px;
+                        line-height: 1.5;
+                        color: #57534E;
+                        text-align: center;
+                        margin: 0 0 16px;
+                    ">
+                        Implementamos novas melhorias no painel do <strong>Studio Raio do Sol</strong> para deixar seus agendamentos mais rápidos e precisos:
+                    </p>
+
+                    <!-- Lista de Novidades -->
+                    <div style="
+                        background: #FFFFFF;
+                        border: 1px solid #E7DCC3;
+                        border-radius: 14px;
+                        padding: 12px 14px;
+                        margin-bottom: 18px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 9px;
+                        font-size: 12.8px;
+                        color: #374151;
+                        box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+                    ">
+                        <div style="display:flex;align-items:flex-start;gap:8px;">
+                            <span style="font-size:15px;line-height:1.2;">⚡</span>
+                            <span><strong>Marcações em Tempo Real:</strong> Agendamentos e desmarcações atualizam sozinhos na tela em segundos.</span>
+                        </div>
+                        <div style="display:flex;align-items:flex-start;gap:8px;">
+                            <span style="font-size:15px;line-height:1.2;">🔔</span>
+                            <span><strong>Notificações no Celular:</strong> Alerta com som e vibração quando marcarem ou desmarcarem horários.</span>
+                        </div>
+                        <div style="display:flex;align-items:flex-start;gap:8px;">
+                            <span style="font-size:15px;line-height:1.2;">📐</span>
+                            <span><strong>Horários Enquadrados &amp; Colunas Ajustáveis:</strong> Caixinhas no tempo exato do procedimento e ajuste de largura estilo Excel.</span>
+                        </div>
+                        <div style="display:flex;align-items:flex-start;gap:8px;">
+                            <span style="font-size:15px;line-height:1.2;">💬</span>
+                            <span><strong>Botões Mais Visíveis:</strong> Botão de confirmação rápida pelo WhatsApp maior e mais fácil de tocar.</span>
+                        </div>
+                    </div>
+
+                    <!-- Pergunta de Sugestão ou Reclamação -->
+                    <div style="
+                        background: rgba(201, 168, 76, 0.08);
+                        border: 1.5px solid #D8C28B;
+                        border-radius: 14px;
+                        padding: 14px;
+                        margin-bottom: 16px;
+                    ">
+                        <label for="updateFeedbackText" style="
+                            display: block;
+                            font-size: 14px;
+                            font-weight: 800;
+                            color: #78350F;
+                            margin-bottom: 8px;
+                            text-align: center;
+                        ">
+                            💬 Você tem alguma sugestão ou reclamação?
+                        </label>
+
+                        <!-- Seletores rápidos de tipo -->
+                        <div id="fbCategoryPills" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:10px;">
+                            <button type="button" class="fb-cat-pill active" data-cat="sugestao" style="padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:700;border:1.5px solid #C9A84C;background:#FEF3C7;color:#92400E;cursor:pointer;">💡 Sugestão</button>
+                            <button type="button" class="fb-cat-pill" data-cat="reclamacao" style="padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:700;border:1px solid #D6D3D1;background:#FFFFFF;color:#57534E;cursor:pointer;">⚠️ Reclamação</button>
+                            <button type="button" class="fb-cat-pill" data-cat="elogio" style="padding:5px 11px;border-radius:999px;font-size:11.5px;font-weight:700;border:1px solid #D6D3D1;background:#FFFFFF;color:#57534E;cursor:pointer;">👏 Gostei / Elogio</button>
+                        </div>
+
+                        <textarea id="updateFeedbackText" rows="3" placeholder="Se quiser, escreva aqui sua sugestão, reclamação ou o que achou da nova agenda..." style="
+                            width: 100%;
+                            box-sizing: border-box;
+                            border-radius: 10px;
+                            border: 1.5px solid #D6C7A7;
+                            background: #FFFFFF;
+                            padding: 10px 12px;
+                            font-family: 'Inter', sans-serif;
+                            font-size: 13.5px;
+                            color: #1F2937;
+                            resize: vertical;
+                            outline: none;
+                        "></textarea>
+                        <div id="updateFeedbackError" style="display:none;color:#DC2626;font-size:12px;font-weight:600;margin-top:6px;text-align:center;"></div>
+                    </div>
+
+                    <!-- Botões de Decisão -->
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <button type="button" id="btnSendUpdateFeedback" style="
+                            width: 100%;
+                            min-height: 46px;
+                            border-radius: 12px;
+                            border: none;
+                            background: linear-gradient(135deg, #C9A84C 0%, #A67C1E 100%);
+                            color: #FFFFFF;
+                            font-family: 'Inter', sans-serif;
+                            font-size: 14px;
+                            font-weight: 800;
+                            letter-spacing: 0.3px;
+                            cursor: pointer;
+                            box-shadow: 0 6px 16px rgba(166, 124, 30, 0.28);
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 8px;
+                        ">
+                            ✉️ Enviar Comentário e Continuar
+                        </button>
+
+                        <button type="button" id="btnSkipUpdateFeedback" style="
+                            width: 100%;
+                            min-height: 42px;
+                            border-radius: 12px;
+                            border: 1.5px solid #D6C7A7;
+                            background: #FFFFFF;
+                            color: #57534E;
+                            font-family: 'Inter', sans-serif;
+                            font-size: 13px;
+                            font-weight: 700;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 6px;
+                        ">
+                            Não quero comentar, prosseguir para a Agenda ➔
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+
+            let selectedCategory = 'sugestao';
+            const catPills = overlay.querySelectorAll('.fb-cat-pill');
+            catPills.forEach(pill => {
+                pill.addEventListener('click', () => {
+                    selectedCategory = pill.dataset.cat || 'sugestao';
+                    catPills.forEach(p => {
+                        const isAct = p === pill;
+                        p.style.border = isAct ? '1.5px solid #C9A84C' : '1px solid #D6D3D1';
+                        p.style.background = isAct ? '#FEF3C7' : '#FFFFFF';
+                        p.style.color = isAct ? '#92400E' : '#57534E';
+                    });
+                });
+            });
+
+            const textarea = overlay.querySelector('#updateFeedbackText');
+            const errEl = overlay.querySelector('#updateFeedbackError');
+            const btnSend = overlay.querySelector('#btnSendUpdateFeedback');
+            const btnSkip = overlay.querySelector('#btnSkipUpdateFeedback');
+
+            const submitInteraction = async (decision, commentText) => {
+                btnSend.disabled = true;
+                btnSkip.disabled = true;
+                btnSend.style.opacity = '0.7';
+                btnSkip.style.opacity = '0.7';
+
+                try {
+                    await apiRequest('/update-feedback', {
+                        method: 'POST',
+                        body: {
+                            campaignId: UPDATE_FEEDBACK_CAMPAIGN,
+                            decision: decision,
+                            category: decision === 'comentou' ? selectedCategory : 'nenhum',
+                            comment: commentText || '',
+                            userName: currentSession.name,
+                            userRole: currentSession.role || 'funcionario',
+                            deviceInfo: navigator.userAgent
+                        }
+                    });
+                    localStorage.setItem(localFlagKey, 'true');
+                } catch (err) {
+                    console.error('[UpdateFeedback] Erro ao enviar:', err);
+                    // Mesmo em falha de rede momentânea, se enviou, evita travar a tela do usuário
+                    localStorage.setItem(localFlagKey, 'true');
+                }
+
+                overlay.remove();
+                if (decision === 'comentou') {
+                    showToast('Obrigado pelo seu comentário! Sua mensagem foi registrada.', 'success', 5000);
+                } else {
+                    showToast('Bom trabalho! Agenda 2.0 pronta para uso.', 'info', 3500);
+                }
+            };
+
+            btnSend.addEventListener('click', () => {
+                const txt = (textarea.value || '').trim();
+                if (!txt) {
+                    errEl.textContent = 'Por favor, escreva sua sugestão ou reclamação no campo acima, ou toque em "Não quero comentar, prosseguir" abaixo.';
+                    errEl.style.display = 'block';
+                    textarea.style.borderColor = '#DC2626';
+                    textarea.focus();
+                    return;
+                }
+                errEl.style.display = 'none';
+                btnSend.textContent = 'Enviando comentário...';
+                submitInteraction('comentou', txt);
+            });
+
+            btnSkip.addEventListener('click', () => {
+                const txt = (textarea.value || '').trim();
+                if (txt.length > 0) {
+                    // Se a pessoa digitou algo e clicou em prosseguir, salvamos o comentário também!
+                    submitInteraction('comentou', txt);
+                } else {
+                    btnSkip.textContent = 'Prosseguindo...';
+                    submitInteraction('prosseguiu_sem_comentar', '');
+                }
+            });
+        } catch (err) {
+            console.error('[UpdateFeedback] Erro geral:', err);
+        }
     }
 
     // ============================================================
