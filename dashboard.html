@@ -38,7 +38,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Dashboard Styles -->
-    <link rel="stylesheet" href="dashboard.css?v=46">
+    <link rel="stylesheet" href="dashboard.css?v=50">
     
     <!-- Local file protocol blocker & guide overlay -->
     <script>
@@ -88,13 +88,19 @@
     </script>
 
     <!-- ============================================
-         PRELOADER — Tela de carregamento premium
+         PRELOADER 2.0 — Tela de carregamento Luxury Boutique
          ============================================ -->
     <div id="appPreloader" class="app-preloader">
-        <div class="preloader-inner">
-            <!-- Logo pulsante -->
+        <div class="preloader-inner preloader-glass-card">
+            <div class="preloader-badge-top">
+                <span class="preloader-live-dot"></span>
+                <span>CONEXÃO CRIPTOGRAFADA • SUPABASE CLOUD</span>
+            </div>
+
+            <!-- Logo pulsante com duplo anel orbital -->
             <div class="preloader-logo-wrap">
                 <div class="preloader-logo-ring"></div>
+                <div class="preloader-logo-ring-inner"></div>
                 <img src="assets/logo.png" alt="Studio Raio do Sol" class="preloader-logo"
                      onerror="this.onerror=null;this.src='assets/logo-fallback.svg';">
                 <div class="preloader-logo-glow"></div>
@@ -102,15 +108,23 @@
 
             <!-- Nome do salão -->
             <h1 class="preloader-title">Studio Raio do Sol</h1>
-            <p class="preloader-subtitle">Painel Profissional</p>
+            <p class="preloader-subtitle">Painel Profissional 2.0</p>
 
-            <!-- Barra de progresso -->
+            <!-- Barra de progresso + Percentual ao vivo -->
+            <div class="preloader-progress-header">
+                <span class="preloader-status" id="preloaderStatus">Conectando ao servidor…</span>
+                <span class="preloader-percent" id="preloaderPercent">15%</span>
+            </div>
             <div class="preloader-bar-wrap">
                 <div class="preloader-bar" id="preloaderBar"></div>
             </div>
 
-            <!-- Mensagem de status -->
-            <p class="preloader-status" id="preloaderStatus">Conectando ao servidor…</p>
+            <!-- Etapas de carregamento -->
+            <div class="preloader-steps">
+                <span class="preloader-step active" id="preloadStep1">● Sessão</span>
+                <span class="preloader-step" id="preloadStep2">● Equipe &amp; Serviços</span>
+                <span class="preloader-step" id="preloadStep3">● Agenda Global</span>
+            </div>
         </div>
 
         <!-- Partículas decorativas de fundo -->
@@ -473,8 +487,35 @@
                                 </div>
  
                                 <button class="btn-novo-agendamento" id="novoAgendamentoBtn">
-                                    Novo Agendamento
+                                    + Novo Agendamento
                                 </button>
+                                <button type="button" class="btn-confirmar-dia-wa" id="btnConfirmDayWhatsApp" title="Confirmar agendamentos pendentes do dia no WhatsApp">
+                                    💬 Confirmar Dia
+                                </button>
+                                <button type="button" class="btn-toggle-drawer" id="btnToggleRightDrawer" title="Mostrar ou esconder painel lateral para ampliar a agenda">
+                                    ⇄ Recepção Ao Vivo
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- ============================================
+                             AGENDA 2.0: BARRA RÁPIDA DA SEMANA + BUSCA E STATUS
+                             ============================================ -->
+                        <div class="agenda-v2-toolbar" id="agendaV2Toolbar">
+                            <!-- Faixa Rápida dos 6 Dias (Seg a Sáb) -->
+                            <div class="week-quick-ribbon" id="weekQuickRibbon"></div>
+
+                            <!-- Busca Instantânea + Chips de Status -->
+                            <div class="agenda-v2-controls">
+                                <div class="agenda-quick-search-wrap">
+                                    <input type="text" id="agendaQuickSearch" class="agenda-quick-search" placeholder="🔍 Destacar cliente na grade..." aria-label="Destacar cliente na grade">
+                                </div>
+                                <div class="agenda-status-chips" id="agendaStatusChips">
+                                    <button type="button" class="status-chip active" data-status-filter="all">Todos</button>
+                                    <button type="button" class="status-chip chip-chair" data-status-filter="cadeira">💺 Na Cadeira</button>
+                                    <button type="button" class="status-chip chip-pending" data-status-filter="agendado">⏳ Agendados</button>
+                                    <button type="button" class="status-chip chip-done" data-status-filter="concluido">✓ Concluídos</button>
+                                </div>
                             </div>
                         </div>
 
@@ -1538,9 +1579,22 @@
                 </main>
 
                 <!-- ============================================
-                     RIGHT SIDEBAR
+                     RIGHT SIDEBAR (GAVETA INTELIGENTE RETRÁTIL)
                      ============================================ -->
                 <aside class="right-sidebar" id="rightSidebar">
+
+                    <!-- Recepção Ao Vivo (Agenda 2.0) -->
+                    <section class="right-panel live-reception-panel" id="panelRecepcaoAoVivo">
+                        <div class="live-reception-header">
+                            <h3 class="right-panel-title" style="margin:0;">
+                                ⚡ Recepção Ao Vivo
+                            </h3>
+                            <button type="button" class="btn-close-drawer-mini" id="btnCloseDrawerMini" title="Recolher barra lateral para ampliar a agenda">Esconder ✕</button>
+                        </div>
+                        <div id="liveReceptionContent" class="live-reception-content">
+                            <!-- Preenchido dinamicamente pelo JS -->
+                        </div>
+                    </section>
 
                     <!-- Professionals List -->
                     <section class="right-panel" id="panelProfissionais">
@@ -1569,6 +1623,6 @@
     </div><!-- /.dashboard-layout -->
 
     <script type="module" src="api-config.js?v=10"></script>
-    <script type="module" src="dashboard.js?v=46"></script>
+    <script type="module" src="dashboard.js?v=50"></script>
 </body>
 </html>

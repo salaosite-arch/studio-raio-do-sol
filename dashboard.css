@@ -10133,5 +10133,478 @@ body.dark-mode .appt-blocked {
   background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03) 10px, transparent 10px, transparent 20px) !important;
 }
 
+/* ============================================================
+   AGENDA GLOBAL 2.0 & PRELOADER 2.0 — MODERNIZAÇÃO LUXURY
+   ============================================================ */
+
+/* --- Preloader 2.0 Glass Card --- */
+.app-preloader {
+  background: radial-gradient(circle at 50% 35%, #FFFDF8 0%, #F4ECE0 55%, #E7DCC8 100%) !important;
+}
+body.dark-mode .app-preloader {
+  background: radial-gradient(circle at 50% 35%, #231E18 0%, #14110D 60%, #0A0806 100%) !important;
+}
+.preloader-glass-card {
+  max-width: 410px !important;
+  width: 90%;
+  padding: 36px 32px 30px;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(201, 168, 76, 0.35);
+  box-shadow: 0 25px 60px rgba(31, 24, 15, 0.12), 0 4px 20px rgba(201, 168, 76, 0.15);
+}
+body.dark-mode .preloader-glass-card {
+  background: rgba(28, 24, 20, 0.88);
+  border-color: rgba(201, 168, 76, 0.3);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.65);
+}
+.preloader-badge-top {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(201, 168, 76, 0.12);
+  border: 1px solid rgba(201, 168, 76, 0.3);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  color: #9A7B1F;
+  margin-bottom: 22px;
+}
+body.dark-mode .preloader-badge-top {
+  color: #F3D476;
+}
+.preloader-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10B981;
+  box-shadow: 0 0 8px #10B981;
+}
+.preloader-logo-ring-inner {
+  position: absolute;
+  top: -15px;
+  left: -15px;
+  right: -15px;
+  bottom: -15px;
+  border: 1px solid rgba(201, 168, 76, 0.25);
+  border-radius: 50%;
+  animation: preloaderRotateRing 18s linear infinite reverse;
+}
+.preloader-progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+.preloader-percent {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #B8942D;
+}
+.preloader-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.preloader-step {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(31, 41, 55, 0.45);
+  transition: all 0.3s ease;
+}
+body.dark-mode .preloader-step {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.4);
+}
+.preloader-step.active {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+body.dark-mode .preloader-step.active {
+  color: #34D399;
+}
+
+/* --- Botões extras do topo da Agenda 2.0 --- */
+.btn-confirmar-dia-wa {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #059669;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+}
+.btn-confirmar-dia-wa:hover {
+  background: #047857;
+  transform: translateY(-1px);
+}
+.btn-toggle-drawer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #FAF6EE;
+  border: 1px solid rgba(201, 168, 76, 0.45);
+  color: #5E4A12;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-toggle-drawer:hover {
+  background: #FFF3D1;
+}
+body.dark-mode .btn-toggle-drawer {
+  background: #2A2520;
+  color: #F3D476;
+  border-color: rgba(201, 168, 76, 0.35);
+}
+
+/* --- Barra Rápida da Semana (7 Dias) + Busca e Chips de Status --- */
+.agenda-v2-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 20px;
+  background: #FDFBF7;
+  border-top: 1px solid rgba(201, 168, 76, 0.18);
+  border-bottom: 1px solid rgba(201, 168, 76, 0.18);
+}
+body.dark-mode .agenda-v2-toolbar {
+  background: #1E1B18;
+  border-color: rgba(255, 255, 255, 0.07);
+}
+.week-quick-ribbon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0;
+}
+.week-day-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: 9px;
+  background: #FFFFFF;
+  border: 1px solid #E5DAC8;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4B4237;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+.week-day-pill:hover {
+  border-color: #C9A84C;
+  background: #FFFDF7;
+}
+.week-day-pill.active {
+  border: 2px solid #C9A84C;
+  background: #FFF8E6;
+  color: #1F1A14;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(201, 168, 76, 0.18);
+}
+body.dark-mode .week-day-pill {
+  background: #26221E;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #D1C7B7;
+}
+body.dark-mode .week-day-pill.active {
+  background: rgba(201, 168, 76, 0.18);
+  border-color: #C9A84C;
+  color: #FFF;
+}
+.week-day-badge {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #EFE8DA;
+  color: #5E4A12;
+}
+.week-day-pill.active .week-day-badge {
+  background: linear-gradient(135deg, #C9A84C, #9A7B1F);
+  color: #FFFFFF;
+}
+body.dark-mode .week-day-badge {
+  background: rgba(255, 255, 255, 0.1);
+  color: #F3D476;
+}
+
+.agenda-v2-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.agenda-quick-search {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #DECFA6;
+  background: #FFFFFF;
+  font-size: 12.5px;
+  color: #1F1A14;
+  min-width: 205px;
+  transition: all 0.2s ease;
+}
+.agenda-quick-search:focus {
+  border-color: #C9A84C;
+  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.15);
+}
+body.dark-mode .agenda-quick-search {
+  background: #26221E;
+  border-color: rgba(201, 168, 76, 0.3);
+  color: #FFF;
+}
+
+.agenda-status-chips {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.status-chip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  background: #EFEAE1;
+  color: #574E42;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.status-chip.active {
+  background: #1F1A14;
+  color: #FFFFFF;
+}
+.status-chip.chip-chair {
+  background: #E0F2FE;
+  color: #0369A1;
+}
+.status-chip.chip-chair.active {
+  background: #0284C7;
+  color: #FFFFFF;
+}
+.status-chip.chip-pending {
+  background: #FEF3C7;
+  color: #92400E;
+}
+.status-chip.chip-pending.active {
+  background: #D97706;
+  color: #FFFFFF;
+}
+.status-chip.chip-done {
+  background: #D1FAE5;
+  color: #065F46;
+}
+.status-chip.chip-done.active {
+  background: #059669;
+  color: #FFFFFF;
+}
+
+/* --- Termômetro de Ocupação nos Cabeçalhos dos Profissionais --- */
+.prof-header-occupancy {
+  width: 100%;
+  margin-top: 4px;
+  padding: 0 6px;
+}
+.prof-occ-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: #6E6252;
+  margin-bottom: 2px;
+  font-weight: 600;
+}
+body.dark-mode .prof-occ-meta {
+  color: #B0A698;
+}
+.prof-occ-bar-bg {
+  width: 100%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+body.dark-mode .prof-occ-bar-bg {
+  background: rgba(255, 255, 255, 0.12);
+}
+.prof-occ-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+/* --- Linha do Tempo Ao Vivo ("🔴 AGORA") --- */
+.live-time-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 25;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+.live-time-badge {
+  background: #E11D48;
+  color: #FFFFFF;
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 0 6px 6px 0;
+  box-shadow: 0 2px 6px rgba(225, 29, 72, 0.35);
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.live-time-rule {
+  flex: 1;
+  border-top: 2px dashed #E11D48;
+}
+
+/* --- Botões de Ação Rápida em 1 Clique no Card (WhatsApp & Concluir) --- */
+.appt-quick-actions {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 15;
+}
+.appointment-block:hover .appt-quick-actions {
+  opacity: 1;
+}
+.appt-qa-btn {
+  padding: 2px 5px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.1;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.18);
+}
+.appt-qa-wa {
+  background: #059669;
+  color: #FFFFFF;
+}
+.appt-qa-done {
+  background: #0284C7;
+  color: #FFFFFF;
+}
+
+/* --- Gaveta Lateral Inteligente Retrátil ("⚡ Recepção Ao Vivo") --- */
+body.right-drawer-collapsed .right-sidebar {
+  display: none !important;
+}
+body.right-drawer-collapsed .content-wrapper {
+  grid-template-columns: 1fr !important;
+}
+.live-reception-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.btn-close-drawer-mini {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(0, 0, 0, 0.05);
+  color: #6E6252;
+  cursor: pointer;
+}
+.btn-close-drawer-mini:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+.live-rec-group {
+  margin-bottom: 12px;
+}
+.live-rec-group-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.live-rec-card {
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  margin-bottom: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.07);
+}
+.live-rec-card--chair {
+  background: #EFF6FF;
+  border-color: #BAE6FD;
+  color: #0C4A6E;
+}
+.live-rec-card--next {
+  background: #FFFBEB;
+  border-color: #FDE68A;
+  color: #78350F;
+}
+body.dark-mode .live-rec-card--chair {
+  background: rgba(2, 132, 199, 0.15);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #E0F2FE;
+}
+body.dark-mode .live-rec-card--next {
+  background: rgba(217, 119, 6, 0.15);
+  border-color: rgba(251, 191, 36, 0.3);
+  color: #FEF3C7;
+}
+.free-prof-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.free-prof-pill {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  color: #065F46;
+}
+body.dark-mode .free-prof-pill {
+  background: rgba(5, 150, 105, 0.18);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #A7F3D0;
+}
+
+
 
 

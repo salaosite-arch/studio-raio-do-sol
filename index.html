@@ -25,7 +25,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=11">
+    <link rel="stylesheet" href="styles.css?v=15">
     
     <!-- Local file protocol blocker & guide overlay -->
     <script>
@@ -74,89 +74,155 @@
     <!-- Floating Particles -->
     <div class="particles" id="particles"></div>
 
-    <!-- ==================== LOGIN SCREEN ==================== -->
+    <!-- ==================== LOGIN SCREEN (LUXURY 2.0) ==================== -->
     <main class="auth-container" id="loginScreen">
-        <div class="auth-card glass-card">
-            <!-- Logo Section -->
-            <div class="auth-logo">
-                <div class="logo-wrapper">
-                    <img src="assets/logo.png" alt="Studio Raio do Sol" class="logo-img" id="logoImg" onerror="this.onerror=null; this.src='assets/logo-fallback.svg';">
-                </div>
-                <div class="logo-glow"></div>
-            </div>
-
-            <!-- Title -->
-            <div class="auth-header">
-                <h1 class="auth-title">ACESSO PROFISSIONAL</h1>
-                <p class="auth-subtitle">Bem-vindo de volta, profissional!</p>
-            </div>
-
-            <!-- Login Form -->
-            <form class="auth-form" id="loginForm" novalidate>
-                <!-- Email Field -->
-                <div class="form-group">
-                    <label for="loginEmail" class="form-label">E-mail ou Usuário</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                                <circle cx="12" cy="7" r="4"/>
-                            </svg>
-                        </span>
-                        <input type="email" id="loginEmail" class="form-input" placeholder="seu.email@exemplo.com" required autocomplete="email">
+        <div class="auth-split-shell">
+            <!-- Left Luxury Showcase Panel -->
+            <aside class="auth-showcase">
+                <div class="auth-showcase-glow"></div>
+                <div class="auth-showcase-top">
+                    <div class="auth-showcase-badge">
+                        <span class="auth-live-dot"></span>
+                        <span>SISTEMA ONLINE • NUVEM CRIPTOGRAFADA</span>
                     </div>
-                    <span class="form-error" id="loginEmailError"></span>
-                </div>
-
-                <!-- Password Field -->
-                <div class="form-group">
-                    <label for="loginPassword" class="form-label">Senha</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                            </svg>
-                        </span>
-                        <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required autocomplete="current-password">
-                        <button type="button" class="toggle-password" id="toggleLoginPassword" aria-label="Mostrar senha">
-                            <svg class="eye-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                <circle cx="12" cy="12" r="3"/>
-                            </svg>
-                            <svg class="eye-closed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                                <line x1="1" y1="1" x2="23" y2="23"/>
-                            </svg>
-                        </button>
+                    <div class="auth-showcase-brand">
+                        <div class="logo-wrapper">
+                            <img src="assets/logo.png" alt="Studio Raio do Sol" class="logo-img" id="logoImg" onerror="this.onerror=null; this.src='assets/logo-fallback.svg';">
+                        </div>
+                        <div>
+                            <h2 class="auth-showcase-title">Studio Raio do Sol</h2>
+                            <p class="auth-showcase-tag">Beauty &amp; Care Management</p>
+                        </div>
                     </div>
-                    <span class="form-error" id="loginPasswordError"></span>
+                    <p class="auth-showcase-desc">
+                        Gestão inteligente de agenda, profissionais, comissões e atendimento em tempo real.
+                    </p>
                 </div>
 
-                <!-- Forgot Password -->
-                <div class="form-options">
-                    <a href="#" class="forgot-link" id="forgotPasswordLink">Esqueci minha senha</a>
+                <div class="auth-showcase-features">
+                    <div class="auth-feature-item">
+                        <div class="auth-feature-icon">☀️</div>
+                        <div>
+                            <strong>Agenda Global 2.0 em Tempo Real</strong>
+                            <span>Controle de cadeira, ocupação e alertas ao vivo</span>
+                        </div>
+                    </div>
+                    <div class="auth-feature-item">
+                        <div class="auth-feature-icon">💬</div>
+                        <div>
+                            <strong>Integração Rápida WhatsApp</strong>
+                            <span>Confirmação de clientes e fila do dia em 1 clique</span>
+                        </div>
+                    </div>
+                    <div class="auth-feature-item">
+                        <div class="auth-feature-icon">🛡️</div>
+                        <div>
+                            <strong>Banco de Dados Seguro</strong>
+                            <span>Sincronização instantânea para toda a equipe</span>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Submit Button -->
-                <button type="submit" class="btn btn-primary" id="loginBtn">
-                    <span class="btn-text">ENTRAR</span>
-                    <span class="btn-loader" style="display:none">
-                        <span class="spinner"></span>
-                    </span>
-                </button>
-            </form>
+                <div class="auth-showcase-footer" id="loginLiveDate">
+                    Painel Oficial Studio Raio do Sol
+                </div>
+            </aside>
 
-            <!-- Register Link -->
-            <div class="auth-footer">
-                <p>Ainda não tem conta? <a href="#" class="register-link" id="goToRegister">Cadastre-se</a></p>
+            <!-- Right Form Card -->
+            <div class="auth-card glass-card">
+                <div class="auth-mobile-logo">
+                    <div class="logo-wrapper" style="width:76px;height:76px;">
+                        <img src="assets/logo.png" alt="Studio Raio do Sol" class="logo-img" onerror="this.onerror=null; this.src='assets/logo-fallback.svg';">
+                    </div>
+                </div>
+
+                <!-- Title -->
+                <div class="auth-header">
+                    <span class="auth-greeting-pill" id="authGreetingPill">✨ Bem-vindo(a) de volta</span>
+                    <h1 class="auth-title">ACESSO PROFISSIONAL</h1>
+                    <p class="auth-subtitle">Entre com suas credenciais para abrir o painel</p>
+                </div>
+
+                <!-- Login Form -->
+                <form class="auth-form" id="loginForm" novalidate>
+                    <!-- Email Field -->
+                    <div class="form-group">
+                        <label for="loginEmail" class="form-label">E-mail ou Usuário</label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </span>
+                            <input type="email" id="loginEmail" class="form-input" placeholder="seu.email@exemplo.com" required autocomplete="email">
+                        </div>
+                        <span class="form-error" id="loginEmailError"></span>
+                    </div>
+
+                    <!-- Password Field -->
+                    <div class="form-group">
+                        <label for="loginPassword" class="form-label">Senha de Acesso</label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                                </svg>
+                            </span>
+                            <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required autocomplete="current-password">
+                            <button type="button" class="toggle-password" id="toggleLoginPassword" aria-label="Mostrar senha">
+                                <svg class="eye-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                                <svg class="eye-closed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                    <line x1="1" y1="1" x2="23" y2="23"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <span class="form-error" id="loginPasswordError"></span>
+                    </div>
+
+                    <!-- Forgot Password -->
+                    <div class="form-options">
+                        <a href="#" class="forgot-link" id="forgotPasswordLink">Esqueci minha senha</a>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-primary" id="loginBtn">
+                        <span class="btn-text">ENTRAR NO PAINEL</span>
+                        <span class="btn-loader" style="display:none">
+                            <span class="spinner"></span>
+                        </span>
+                    </button>
+                </form>
+
+                <!-- Register Link -->
+                <div class="auth-footer">
+                    <p>Novo(a) na equipe? <a href="#" class="register-link" id="goToRegister">Solicitar cadastro profissional</a></p>
+                </div>
             </div>
         </div>
 
         <!-- Footer -->
         <footer class="page-footer">
-            <p>Sistema de Agendamento Studio Raio do Sol - Todos os direitos reservados.</p>
+            <p>Sistema de Agendamento Studio Raio do Sol • Todos os direitos reservados.</p>
         </footer>
+        <script>
+            (function(){
+                const hr = new Date().getHours();
+                const greet = hr < 12 ? '☀️ Bom dia, profissional!' : (hr < 18 ? '✨ Boa tarde, profissional!' : '🌙 Boa noite, profissional!');
+                const pill = document.getElementById('authGreetingPill');
+                if (pill) pill.textContent = greet;
+                const dEl = document.getElementById('loginLiveDate');
+                if (dEl) {
+                    const fmt = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).format(new Date());
+                    dEl.textContent = fmt.charAt(0).toUpperCase() + fmt.slice(1);
+                }
+            })();
+        </script>
     </main>
 
     <!-- ==================== REGISTER SCREEN ==================== -->

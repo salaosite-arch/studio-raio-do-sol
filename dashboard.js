@@ -3468,6 +3468,25 @@ function closeAppointmentModal() {
             const shortName = nameParts.length > 2
                 ? `${nameParts[0]} ${['de', 'da', 'do', 'dos', 'das'].includes(nameParts[1].toLowerCase()) && nameParts[2] ? nameParts[2] : nameParts[1]}`
                 : p.name;
+
+            const selDateStr = toISODateString(currentDate);
+            const profDayAppts = appointments.filter(a =>
+                a.date === selDateStr &&
+                a.status !== 'Cancelado' &&
+                a.status !== 'Bloqueado' &&
+                (String(a.professionalId) === String(p.id) || (a.isMutual && String(a.professionalId2) === String(p.id)))
+            );
+            let occupiedMins = 0;
+            profDayAppts.forEach(a => {
+                if (a.timeStart && a.timeEnd) {
+                    const [sh, sm] = a.timeStart.split(':').map(Number);
+                    const [eh, em] = a.timeEnd.split(':').map(Number);
+                    occupiedMins += Math.max(15, (eh * 60 + em) - (sh * 60 + sm));
+                }
+            });
+            const occPct = Math.min(100, Math.round((occupiedMins / 540) * 100));
+            const barColor = occPct >= 80 ? '#10B981' : (occPct >= 40 ? '#F59E0B' : '#C9A84C');
+            const countLabel = profDayAppts.length === 0 ? 'Livre hoje' : `${profDayAppts.length} agend.`;
                 
             cell.innerHTML = `
                 ${avatarHTML}
@@ -3477,6 +3496,15 @@ function closeAppointmentModal() {
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                     </svg>
+                </div>
+                <div class="prof-header-occupancy">
+                    <div class="prof-occ-meta">
+                        <span>${countLabel}</span>
+                        <span>${occPct}%</span>
+                    </div>
+                    <div class="prof-occ-bar-bg">
+                        <div class="prof-occ-bar-fill" style="width: ${occPct}%; background: ${barColor};"></div>
+                    </div>
                 </div>
             `;
 
@@ -3734,6 +3762,15 @@ function closeAppointmentModal() {
                 const isBlocked = appt.status === 'Bloqueado';
                 const apptBlock = document.createElement('div');
                 
+                const nowDate = new Date();
+                const isTodaySelected = dateStr === toISODateString(nowDate);
+                const nowTotalMins = nowDate.getHours() * 60 + nowDate.getMinutes();
+                const [aSH, aSM] = (appt.timeStart || '08:00').split(':').map(Number);
+                const [aEH, aEM] = (appt.timeEnd || '08:30').split(':').map(Number);
+                const aStartMins = aSH * 60 + aSM;
+                const aEndMins = aEH * 60 + aEM;
+                const isInChairNow = !isBlocked && appt.status !== 'Concluído' && isTodaySelected && nowTotalMins >= aStartMins && nowTotalMins < aEndMins;
+
                 if (isBlocked) {
                     apptBlock.className = 'appointment-block appt-blocked';
                     apptBlock.style.backgroundColor = '#e5e7eb';
@@ -3741,17 +3778,27 @@ function closeAppointmentModal() {
                     apptBlock.style.borderLeft = '3px solid #9ca3af';
                     apptBlock.style.backgroundImage = 'repeating-linear-gradient(45deg, rgba(156,163,175,0.06), rgba(156,163,175,0.06) 10px, transparent 10px, transparent 20px)';
                     apptBlock.style.cursor = 'pointer';
+                    apptBlock.dataset.v2Status = 'bloqueado';
                 } else {
                     apptBlock.className = `appointment-block appointment--${variant}`;
+                    const isDark = document.body.classList.contains('dark-mode');
                     if (appt.status === 'Concluído') {
                         apptBlock.classList.add('appt-completed');
+                        apptBlock.style.backgroundColor = isDark ? '#064E3B' : '#ECFDF5';
+                        apptBlock.style.color = isDark ? '#ECFDF5' : '#064E3B';
+                        apptBlock.style.borderLeft = '4px solid #059669';
+                        apptBlock.dataset.v2Status = 'concluido';
+                    } else if (isInChairNow) {
+                        apptBlock.style.backgroundColor = isDark ? '#0C4A6E' : '#EFF6FF';
+                        apptBlock.style.color = isDark ? '#E0F2FE' : '#0C4A6E';
+                        apptBlock.style.borderLeft = '4px solid #0284C7';
+                        apptBlock.dataset.v2Status = 'cadeira';
+                    } else {
+                        apptBlock.style.backgroundColor = isDark ? '#45270A' : '#FFF8E1';
+                        apptBlock.style.color = isDark ? '#FEF3C7' : '#3E2723';
+                        apptBlock.style.borderLeft = '4px solid #D97706';
+                        apptBlock.dataset.v2Status = 'agendado';
                     }
-                    
-                    // Apply randomized theme color based on ID
-                    const theme = getApptColor(appt.id);
-                    apptBlock.style.backgroundColor = theme.bg;
-                    apptBlock.style.color = theme.text;
-                    apptBlock.style.borderLeft = `3px solid ${theme.border}`;
                 }
 
                 apptBlock.dataset.appointment = appt.id;
@@ -3838,8 +3885,313 @@ function closeAppointmentModal() {
                     `;
                 }
 
+                if (!isBlocked) {
+                    const qaWrap = document.createElement('div');
+                    qaWrap.className = 'appt-quick-actions';
+                    const waBtn = document.createElement('button');
+                    waBtn.type = 'button';
+                    waBtn.className = 'appt-qa-btn appt-qa-wa';
+                    waBtn.title = 'Enviar confirmação no WhatsApp';
+                    waBtn.textContent = '💬';
+                    waBtn.addEventListener('click', (ev) => {
+                        ev.stopPropagation();
+                        openClientWhatsAppConfirmation(appt);
+                    });
+                    qaWrap.appendChild(waBtn);
+
+                    if (appt.status !== 'Concluído') {
+                        const doneBtn = document.createElement('button');
+                        doneBtn.type = 'button';
+                        doneBtn.className = 'appt-qa-btn appt-qa-done';
+                        doneBtn.title = 'Concluir atendimento em 1 clique';
+                        doneBtn.textContent = '✓';
+                        doneBtn.addEventListener('click', async (ev) => {
+                            ev.stopPropagation();
+                            appt.status = 'Concluído';
+                            await updateAppointmentOnServer(appt.id, appt);
+                            renderCalendarGrid(document.getElementById('filterProfissional')?.value || null);
+                            renderAppointments();
+                        });
+                        qaWrap.appendChild(doneBtn);
+                    }
+                    apptBlock.appendChild(qaWrap);
+                }
+
                 targetCell.appendChild(apptBlock);
             });
+        });
+
+        updateAgendaV2Widgets(displayAppts);
+    }
+
+    /** Abre WhatsApp da cliente com mensagem personalizada de confirmação */
+    function openClientWhatsAppConfirmation(appt) {
+        let phoneDigits = String(appt.phone || '').replace(/\D/g, '');
+        if (!phoneDigits && appt.client) {
+            const foundCli = clients.find(c => c.name && c.name.toLowerCase().trim() === String(appt.client).toLowerCase().trim());
+            if (foundCli && foundCli.phone) {
+                phoneDigits = String(foundCli.phone).replace(/\D/g, '');
+            }
+        }
+        const dateParts = String(appt.date || '').split('-');
+        const dateBR = dateParts.length === 3 ? `${dateParts[2]}/${dateParts[1]}` : appt.date;
+        const msg = `Olá, *${appt.client}*! ☀️ Passando para confirmar seu agendamento de *${appt.serviceName}* no dia *${dateBR}* às *${appt.timeStart}* com *${appt.professionalName}* no *Studio Raio do Sol*. Podemos confirmar sua presença?`;
+        const encoded = encodeURIComponent(msg);
+        if (phoneDigits && phoneDigits.length >= 10) {
+            const fullPhone = phoneDigits.startsWith('55') ? phoneDigits : '55' + phoneDigits;
+            window.open(`https://wa.me/${fullPhone}?text=${encoded}`, '_blank');
+        } else {
+            window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+            showToast('Cliente sem telefone cadastrado — escolha o contato no WhatsApp.', 'info');
+        }
+    }
+
+    let _activeV2StatusFilter = 'all';
+    let _v2ControlsInitialized = false;
+
+    /** Atualiza Faixa de 7 Dias, Linha do Tempo Ao Vivo, Chips de Status e Recepção Ao Vivo */
+    function updateAgendaV2Widgets(displayAppts = []) {
+        // 1. Renderizar Faixa Rápida dos 6 Dias da Semana (Seg a Sáb)
+        const ribbon = document.getElementById('weekQuickRibbon');
+        if (ribbon) {
+            const selStr = toISODateString(currentDate);
+            const todayStr = toISODateString(new Date());
+            const d = new Date(currentDate);
+            const dayOfWeek = d.getDay(); // 0=Sun, 1=Mon...
+            const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            const mon = new Date(d);
+            mon.setDate(d.getDate() + diffToMon);
+
+            const dayNames = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            ribbon.innerHTML = '';
+            for (let i = 0; i < 6; i++) {
+                const dayDate = new Date(mon);
+                dayDate.setDate(mon.getDate() + i);
+                const iso = toISODateString(dayDate);
+                const dd = String(dayDate.getDate()).padStart(2, '0');
+                const mm = String(dayDate.getMonth() + 1).padStart(2, '0');
+                const dayCount = appointments.filter(a => a.date === iso && a.status !== 'Cancelado' && a.status !== 'Bloqueado').length;
+                const isToday = iso === todayStr;
+                const isSelected = iso === selStr;
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'week-day-pill' + (isSelected ? ' active' : '');
+                btn.innerHTML = `
+                    <span>${dayNames[i]} ${dd}/${mm}${isToday ? ' (Hoje)' : ''}</span>
+                    <span class="week-day-badge">${dayCount}</span>
+                `;
+                btn.addEventListener('click', () => {
+                    const fProf = document.getElementById('filterProfissional');
+                    goToDate(dayDate);
+                    renderCalendarGrid(fProf ? fProf.value : null);
+                    renderAppointments();
+                });
+                ribbon.appendChild(btn);
+            }
+        }
+
+        // 2. Renderizar Linha do Tempo Ao Vivo ("🔴 AGORA HH:MM") se for hoje
+        const grid = document.getElementById('calendarGrid');
+        if (grid) {
+            const oldLine = document.getElementById('liveTimeIndicator');
+            if (oldLine) oldLine.remove();
+
+            const now = new Date();
+            const isToday = toISODateString(currentDate) === toISODateString(now);
+            const hr = now.getHours();
+            const mn = now.getMinutes();
+            if (isToday && hr >= BUSINESS_START && hr < BUSINESS_END) {
+                const headerCell = grid.querySelector('.calendar-header-cell');
+                const headerH = headerCell ? headerCell.offsetHeight : 68;
+                const minsSinceStart = (hr - BUSINESS_START) * 60 + mn;
+                const topPx = headerH + (minsSinceStart * (40 / 30));
+                const timeStr = String(hr).padStart(2, '0') + ':' + String(mn).padStart(2, '0');
+
+                const line = document.createElement('div');
+                line.id = 'liveTimeIndicator';
+                line.className = 'live-time-line';
+                line.style.top = `${topPx}px`;
+                line.innerHTML = `
+                    <span class="live-time-badge">🔴 AGORA ${timeStr}</span>
+                    <div class="live-time-rule"></div>
+                `;
+                grid.style.position = 'relative';
+                grid.appendChild(line);
+            }
+        }
+
+        // 3. Atualizar contadores nos Chips de Status
+        const nonBlocked = displayAppts.filter(a => a.status !== 'Bloqueado');
+        const allBlocks = Array.from(document.querySelectorAll('.calendar-grid .appointment-block:not(.appt-blocked)'));
+        const chairCount = allBlocks.filter(b => b.dataset.v2Status === 'cadeira').length;
+        const doneCount = allBlocks.filter(b => b.dataset.v2Status === 'concluido').length;
+        const pendingCount = allBlocks.filter(b => b.dataset.v2Status === 'agendado').length;
+
+        const chipsWrap = document.getElementById('agendaStatusChips');
+        if (chipsWrap) {
+            const setChipText = (filter, label) => {
+                const el = chipsWrap.querySelector(`[data-status-filter="${filter}"]`);
+                if (el) el.textContent = label;
+            };
+            setChipText('all', `Todos (${nonBlocked.length})`);
+            setChipText('cadeira', `💺 Na Cadeira (${chairCount})`);
+            setChipText('agendado', `⏳ Agendados (${pendingCount})`);
+            setChipText('concluido', `✓ Concluídos (${doneCount})`);
+        }
+
+        // 4. Renderizar Painel "⚡ Recepção Ao Vivo" na Barra Direita
+        const liveRecEl = document.getElementById('liveReceptionContent');
+        if (liveRecEl) {
+            const now = new Date();
+            const nowMins = now.getHours() * 60 + now.getMinutes();
+            const isToday = toISODateString(currentDate) === toISODateString(now);
+
+            const inChairList = [];
+            const nextList = [];
+            const busyProfIds = new Set();
+
+            nonBlocked.forEach(a => {
+                if (!a.timeStart || !a.timeEnd) return;
+                const [sh, sm] = a.timeStart.split(':').map(Number);
+                const [eh, em] = a.timeEnd.split(':').map(Number);
+                const sM = sh * 60 + sm;
+                const eM = eh * 60 + em;
+                if (a.status !== 'Concluído' && isToday && nowMins >= sM && nowMins < eM) {
+                    inChairList.push(a);
+                    if (a.professionalId) busyProfIds.add(String(a.professionalId));
+                    if (a.isMutual && a.professionalId2) busyProfIds.add(String(a.professionalId2));
+                } else if (a.status !== 'Concluído' && (!isToday || sM > nowMins)) {
+                    nextList.push(a);
+                }
+            });
+
+            nextList.sort((a, b) => (a.timeStart || '').localeCompare(b.timeStart || ''));
+            const topNext = nextList.slice(0, 3);
+            const freeProfs = professionals.filter(p => !busyProfIds.has(String(p.id)));
+
+            const chairHTML = inChairList.length > 0
+                ? inChairList.slice(0, 4).map(a => `
+                    <div class="live-rec-card live-rec-card--chair">
+                        <div style="display:flex;justify-content:space-between;font-weight:700;">
+                            <span>${a.client}</span>
+                            <span>até ${a.timeEnd}</span>
+                        </div>
+                        <div style="font-size:11px;opacity:0.88;">${a.serviceName} • ${a.professionalName}</div>
+                    </div>
+                `).join('')
+                : `<div style="font-size:11.5px;color:#888;padding:4px 0;">Nenhum atendimento neste minuto.</div>`;
+
+            const nextHTML = topNext.length > 0
+                ? topNext.map(a => `
+                    <div class="live-rec-card live-rec-card--next" data-next-appt-id="${a.id}">
+                        <div style="display:flex;justify-content:space-between;font-weight:700;">
+                            <span>${a.timeStart} — ${a.client}</span>
+                        </div>
+                        <div style="font-size:11px;opacity:0.88;margin-bottom:4px;">${a.serviceName} • ${a.professionalName}</div>
+                        <button type="button" class="btn-wa-next-rec" data-appt-id="${a.id}" style="width:100%;padding:3px 6px;border-radius:6px;background:#059669;color:#fff;font-size:11px;font-weight:700;border:none;cursor:pointer;">
+                            💬 Confirmar no WhatsApp
+                        </button>
+                    </div>
+                `).join('')
+                : `<div style="font-size:11.5px;color:#888;padding:4px 0;">Sem próximos horários pendentes.</div>`;
+
+            const freeHTML = freeProfs.length > 0
+                ? `<div class="free-prof-pills">${freeProfs.map(p => `<span class="free-prof-pill">${p.name.split(' ')[0]}</span>`).join('')}</div>`
+                : `<div style="font-size:11.5px;color:#888;">Todos em atendimento no momento.</div>`;
+
+            liveRecEl.innerHTML = `
+                <div class="live-rec-group">
+                    <div class="live-rec-group-title" style="color:#0284C7;">
+                        <span>💺 Na Cadeira Agora (${inChairList.length})</span>
+                    </div>
+                    ${chairHTML}
+                </div>
+                <div class="live-rec-group">
+                    <div class="live-rec-group-title" style="color:#D97706;">
+                        <span>⏰ Próximos Horários (${nextList.length})</span>
+                    </div>
+                    ${nextHTML}
+                </div>
+                <div class="live-rec-group" style="margin-bottom:0;">
+                    <div class="live-rec-group-title" style="color:#059669;">
+                        <span>🟢 Livres Agora p/ Encaixe (${freeProfs.length})</span>
+                    </div>
+                    ${freeHTML}
+                </div>
+            `;
+
+            liveRecEl.querySelectorAll('.btn-wa-next-rec').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const target = appointments.find(x => String(x.id) === String(btn.dataset.apptId));
+                    if (target) openClientWhatsAppConfirmation(target);
+                });
+            });
+        }
+
+        // 5. Inicializar eventos da barra Agenda 2.0 (uma única vez)
+        if (!_v2ControlsInitialized) {
+            _v2ControlsInitialized = true;
+
+            if (localStorage.getItem('raiosol_drawer_collapsed') === 'true') {
+                document.body.classList.add('right-drawer-collapsed');
+            }
+
+            const toggleDrawer = () => {
+                document.body.classList.toggle('right-drawer-collapsed');
+                localStorage.setItem('raiosol_drawer_collapsed', document.body.classList.contains('right-drawer-collapsed') ? 'true' : 'false');
+            };
+            document.getElementById('btnToggleRightDrawer')?.addEventListener('click', toggleDrawer);
+            document.getElementById('btnCloseDrawerMini')?.addEventListener('click', toggleDrawer);
+
+            const qInput = document.getElementById('agendaQuickSearch');
+            if (qInput) {
+                qInput.addEventListener('input', () => {
+                    applyAgendaV2VisualFilters();
+                });
+            }
+
+            document.querySelectorAll('#agendaStatusChips .status-chip').forEach(chip => {
+                chip.addEventListener('click', () => {
+                    document.querySelectorAll('#agendaStatusChips .status-chip').forEach(c => c.classList.remove('active'));
+                    chip.classList.add('active');
+                    _activeV2StatusFilter = chip.dataset.statusFilter || 'all';
+                    applyAgendaV2VisualFilters();
+                });
+            });
+
+            document.getElementById('btnConfirmDayWhatsApp')?.addEventListener('click', () => {
+                const dateStr = toISODateString(currentDate);
+                const pendingToday = appointments.filter(a => a.date === dateStr && a.status !== 'Cancelado' && a.status !== 'Bloqueado' && a.status !== 'Concluído');
+                if (pendingToday.length === 0) {
+                    showToast('Não há agendamentos pendentes nesta data.', 'info');
+                    return;
+                }
+                openClientWhatsAppConfirmation(pendingToday[0]);
+                showToast(`Abrindo confirmação para ${pendingToday[0].client} (${pendingToday.length} agendamentos no dia). Passe o mouse em qualquer card para clicar em 💬!`, 'success', 5500);
+            });
+        }
+
+        applyAgendaV2VisualFilters();
+    }
+
+    function applyAgendaV2VisualFilters() {
+        const q = (document.getElementById('agendaQuickSearch')?.value || '').toLowerCase().trim();
+        document.querySelectorAll('.calendar-grid .appointment-block').forEach(block => {
+            const clientName = (block.dataset.client || '').toLowerCase();
+            const serviceName = (block.dataset.service || '').toLowerCase();
+            const v2Status = block.dataset.v2Status || 'agendado';
+
+            const matchesQuery = !q || clientName.includes(q) || serviceName.includes(q);
+            const matchesStatus = _activeV2StatusFilter === 'all' || v2Status === _activeV2StatusFilter;
+
+            if (matchesQuery && matchesStatus) {
+                block.style.opacity = '1';
+                block.style.outline = q ? '3px solid #C9A84C' : 'none';
+            } else {
+                block.style.opacity = '0.18';
+                block.style.outline = 'none';
+            }
         });
     }
 
@@ -8888,12 +9240,20 @@ function closeAppointmentModal() {
 
     /** Run all initializations */
     async function init() {
-        // Helper to update preloader status
+        // Helper to update preloader status (Preloader 2.0 with percentage & step pills)
         const updatePreloader = (percentage, statusText) => {
             const bar = document.getElementById('preloaderBar');
             const status = document.getElementById('preloaderStatus');
+            const pct = document.getElementById('preloaderPercent');
+            const s1 = document.getElementById('preloadStep1');
+            const s2 = document.getElementById('preloadStep2');
+            const s3 = document.getElementById('preloadStep3');
             if (bar) bar.style.width = `${percentage}%`;
+            if (pct) pct.textContent = `${percentage}%`;
             if (status && statusText) status.textContent = statusText;
+            if (s1 && percentage >= 20) { s1.classList.add('active'); s1.textContent = '✓ Sessão'; }
+            if (s2 && percentage >= 45) { s2.classList.add('active'); s2.textContent = '✓ Equipe & Serviços'; }
+            if (s3 && percentage >= 75) { s3.classList.add('active'); s3.textContent = '✓ Agenda Global'; }
         };
 
         // 1. Immediately clear static placeholder values while Firebase loads
